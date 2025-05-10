@@ -1,0 +1,117 @@
+'use client';
+
+import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import SearchBar from '@/components/SearchBar';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { getCategoryName } from '@/constants/categories';
+
+const SearchPage = () => {
+  const searchParams = useSearchParams();
+  const [searchResults, setSearchResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const query = searchParams.get('q');
+  const category = searchParams.get('category');
+
+  useEffect(() => {
+    const fetchSearchResults = async () => {
+      if (!query) return;
+      
+      setIsLoading(true);
+      try {
+        // TODO: 실제 API 호출로 대체
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&category=${category}`);
+        const data = await response.json();
+        setSearchResults(data);
+      } catch (error) {
+        console.error('검색 결과를 가져오는데 실패했습니다:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSearchResults();
+  }, [query, category]);
+
+  return (
+    <>
+      <Header />
+      <main className="min-h-screen bg-white">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-8">
+              <SearchBar 
+                isVisible={true}
+              />
+            </div>
+
+            {isLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0E74F9]"></div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h1 className="text-2xl font-bold">
+                    "{query}" 검색 결과
+                    {category !== 'all' && (
+                      <span className="text-gray-500 text-lg ml-2">
+                        ({getCategoryName(category)} 카테고리)
+                      </span>
+                    )}
+                  </h1>
+                  <span className="text-gray-500">
+                    {searchResults.length}개의 결과
+                  </span>
+                </div>
+
+                {searchResults.length > 0 ? (
+                  <div className="space-y-4">
+                    {searchResults.map((result, index) => (
+                      <div 
+                        key={index}
+                        className="p-4 border border-gray-200 rounded-lg hover:border-[#0E74F9] transition-all duration-200"
+                      >
+                        <div className="flex flex-col md:flex-row gap-4">
+                          <div className="w-full md:w-[200px] md:flex-shrink-0">
+                            <img 
+                              src={result.image || 'https://picsum.photos/200/150'} 
+                              alt={result.title}
+                              className="w-full h-[150px] object-cover rounded-lg"
+                            />
+                          </div>
+                          <div className="flex-grow">
+                            <h2 className="text-xl font-semibold mb-2 hover:text-[#0E74F9] transition-colors">{result.title}</h2>
+                            <p className="text-gray-600 mb-2">{result.description}</p>
+                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                              <span>{result.category}</span>
+                              <span>{result.date}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500 text-lg">
+                      검색 결과가 없습니다.
+                    </p>
+                    <p className="text-gray-400 mt-2">
+                      다른 검색어로 다시 시도해보세요.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+};
+
+export default SearchPage; 
