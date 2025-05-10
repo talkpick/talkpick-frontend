@@ -1,11 +1,12 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 const Header = () => {
   return (
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <Image
               src="/icon_new.svg"
               alt="TalkPick Logo"
@@ -16,7 +17,7 @@ const Header = () => {
             <div className="text-2xl font-bold text-black">
               TalkPick
             </div>
-          </div>
+          </Link>
         </div>
       </div>
     </header>
