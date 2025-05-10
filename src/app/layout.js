@@ -15,7 +15,7 @@ export const metadata = {
   title: "당신의 뉴스 당신의 이야기 TalkPick!",
   description: "당신의 뉴스 당신의 이야기 TalkPick!",
   icons: {
-    icon: '/logo.svg',   // SVG 경로
+    icon: '/logo_vertical.svg',   // SVG 경로
   },
 };
 

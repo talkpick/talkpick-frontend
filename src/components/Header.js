@@ -7,7 +7,7 @@ const Header = () => {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Image
-              src="/icon.svg"
+              src="/icon_new.svg"
               alt="TalkPick Logo"
               width={32}
               height={32}
