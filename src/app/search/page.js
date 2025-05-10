@@ -86,9 +86,10 @@ const SearchPage = () => {
                   <>
                     <div className="space-y-4">
                       {currentResults.map((result, index) => (
-                        <div 
+                        <a 
                           key={index}
-                          className="p-4 border border-gray-200 rounded-lg hover:border-[#0E74F9] transition-all duration-200"
+                          href={`/news/${result.id}`}
+                          className="block p-4 border border-gray-200 rounded-lg hover:border-[#0E74F9] transition-all duration-200"
                         >
                           <div className="flex flex-col md:flex-row gap-4">
                             <div className="w-full md:w-[200px] md:flex-shrink-0">
@@ -107,7 +108,7 @@ const SearchPage = () => {
                               </div>
                             </div>
                           </div>
-                        </div>
+                        </a>
                       ))}
                     </div>
 
