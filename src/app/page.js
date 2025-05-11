@@ -55,9 +55,10 @@ const NewsPreview = ({ category }) => {
   return (
     <div className="space-y-4">
       {dummyNews.map(news => (
-        <div 
-          key={news.id} 
-          className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-[#0E74F9]"
+        <a 
+          key={news.id}
+          href={`/news/${news.id}`}
+          className="block bg-white p-4 rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-[#0E74F9]"
         >
           <div className="flex flex-col md:flex-row gap-4">
             <div className="w-full md:w-[200px] md:flex-shrink-0">
@@ -74,7 +75,7 @@ const NewsPreview = ({ category }) => {
               <span className="text-sm text-gray-500">{news.date}</span>
             </div>
           </div>
-        </div>
+        </a>
       ))}
     </div>
   );
