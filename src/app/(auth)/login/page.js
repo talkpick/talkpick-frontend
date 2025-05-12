@@ -21,7 +21,7 @@ const LoginForm = () => {
 
     {/* main 영역: flex-1 + px-4 */}
     <main className="flex flex-col items-center justify-center flex-1 px-6">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6 border border-gray-300">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">로그인</h2>
 
         <form className="flex flex-col" onSubmit={handleSubmit}>
@@ -64,7 +64,7 @@ const LoginForm = () => {
             </label>
 
             <div className="flex space-x-4">
-              <a href="#" className="text-sm text-blue-500 hover:underline">
+              <a href="/signup" className="text-sm text-blue-500 hover:underline">
                 회원가입
               </a>
               <a href="#" className="text-sm text-blue-500 hover:underline">
