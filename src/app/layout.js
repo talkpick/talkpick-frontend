@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/contexts/AuthContext";
+import Providers from "./Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "당신의 뉴스 당신의 이야기 TalkPick!",
+  title: "TalkPick",
   description: "당신의 뉴스 당신의 이야기 TalkPick!",
   icons: {
     icon: '/logo_vertical.svg',   // SVG 경로
@@ -26,9 +26,9 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
+        <Providers>
           {children}
-        </AuthProvider>
+        </Providers>
       </body>
     </html>
   );
