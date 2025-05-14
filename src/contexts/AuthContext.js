@@ -3,6 +3,7 @@ import React, {
     createContext,
     useState,
     useCallback,
+    useEffect,
 } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -10,7 +11,11 @@ export const AuthContext = createContext();
   
 export function AuthProvider({ children }) {
   const router = useRouter();
-  const [accessToken, setAccessToken] = useState(localStorage.getItem('accessToken'));
+  const [accessToken, setAccessToken] = useState(null);
+
+  useEffect(() => {
+    setAccessToken(localStorage.getItem('accessToken'));
+  }, []);
 
   // login / logout 액션
   const login = useCallback(({ message, data }) => {
