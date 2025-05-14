@@ -3,16 +3,21 @@
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { signIn } from '@/app/api/auth/auth';
 
 const LoginForm = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [showErrorToast, setShowErrorToast] = useState(false);
 
   // 페이지 로드 시 rememberedUserId 확인
   useEffect(() => {
@@ -22,6 +27,28 @@ const LoginForm = () => {
       setRememberMe(true);
     }
   }, []);
+
+  // 회원가입 성공 메시지 표시
+  useEffect(() => {
+    if (searchParams.get('signup') === 'success') {
+      setShowToast(true);
+      const timer = setTimeout(() => {
+        setShowToast(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
+
+  // 에러 메시지 토스트 표시
+  useEffect(() => {
+    if (error) {
+      setShowErrorToast(true);
+      const timer = setTimeout(() => {
+        setShowErrorToast(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,16 +74,23 @@ const LoginForm = () => {
     <div className="flex flex-col min-h-screen">
       <Header />
 
-      {/* main 영역: flex-1 + px-4 */}
+      <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-white text-black-500 border border-green-500 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} flex items-center`}>
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="#22c55e" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        회원가입이 완료되었습니다. 로그인해주세요.
+      </div>
+
+      <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-white text-black-500 border border-red-500 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${showErrorToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} flex items-center`}>
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="#ef4444" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        {error}
+      </div>
+
       <main className="flex flex-col items-center justify-center flex-1 px-6">
         <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6 border border-gray-300">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">로그인</h2>
-
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-              <span className="block sm:inline">{error}</span>
-            </div>
-          )}
 
           <form className="flex flex-col" onSubmit={handleSubmit}>
             <input
