@@ -2,13 +2,20 @@
 
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { signIn } from '@/app/api/auth/auth';
 
-const LoginForm = () => {
-  const router = useRouter();
+// 로딩 컴포넌트
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center flex-1">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E74F9]"></div>
+  </div>
+);
+
+// useSearchParams를 사용하는 컴포넌트
+const LoginFormContent = () => {
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const [userId, setUserId] = useState('');
@@ -71,9 +78,7 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-
+    <>
       <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-white text-black-500 border border-green-500 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} flex items-center`}>
         <svg className="w-5 h-5 mr-2" fill="none" stroke="#22c55e" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
@@ -158,7 +163,17 @@ const LoginForm = () => {
           </form>
         </div>
       </main>
+    </>
+  );
+};
 
+const LoginForm = () => {
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <Suspense fallback={<LoadingSpinner />}>
+        <LoginFormContent />
+      </Suspense>
       <Footer />
     </div>
   );
