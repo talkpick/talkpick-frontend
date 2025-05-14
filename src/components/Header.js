@@ -3,9 +3,20 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { signOut } from '@/app/api/auth/auth';
 
 const Header = () => {
-  const {user, logout} = useAuth();
+  const { accessToken, logout } = useAuth();
+  
+  const handleLogout = async () => {
+    try {
+      await signOut(localStorage.getItem('accessToken'));
+      logout();
+    } catch (error) {
+      console.error('로그아웃 중 오류 발생:', error);
+    }
+  };
+  
   return (
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-4 py-4">
@@ -24,7 +35,7 @@ const Header = () => {
           </Link>
           {/* 네비게이션 버튼 */}
           <nav className="flex items-center gap-4">
-            {user ? (
+            {accessToken ? (
               <>
                 <Link
                   href="/mypage"
@@ -33,7 +44,7 @@ const Header = () => {
                   마이페이지
                 </Link>
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   로그아웃
