@@ -2,7 +2,7 @@ import instance from '@/lib/axios';
 
 export const signIn = async (account, password) => {
   try {
-    const response = await instance.post('/auth/signIn', {
+    const response = await instance.post('/api/auth/signIn', {
       account,
       password,
     });
@@ -14,7 +14,7 @@ export const signIn = async (account, password) => {
 
 export const signUp = async (signUpData) => {
   try {
-    const response = await instance.post('/auth/signUp', signUpData);
+    const response = await instance.post('/api/auth/signUp', signUpData);
     return response.data;
   } catch (error) {
     throw error.response?.data.message || { message: '회원가입 중 오류가 발생했습니다.' };
@@ -23,7 +23,7 @@ export const signUp = async (signUpData) => {
 
 export const refresh = async (refreshToken) => {
   try {
-    const response = await instance.post('/auth/refresh', {
+    const response = await instance.post('/api/auth/refresh', {
       refreshToken,
     });
     return response.data;
@@ -34,7 +34,7 @@ export const refresh = async (refreshToken) => {
 
 export const signOut = async () => {
   try {
-    await instance.post('/auth/logout');
+    await instance.post('/api/auth/logout');
   } catch (error) {
     throw error.response?.data.message || { message: '로그아웃 중 오류가 발생했습니다.' };
   }
