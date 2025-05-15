@@ -1,0 +1,27 @@
+name: Front Deploy
+
+on:
+  push:
+    branches:
+      - dev
+    paths-ignore:
+      - '.github/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Copy frontend code to shared volume
+      run: |
+        rm -rf /deploy/talkpic-frontend/app*
+        cp -r . /deploy/talkpic-frontend/app
+
+    - name: Restart Docker
+      run: |
+        cd /deploy
+        docker-compose up -d --build --force-recreate front
