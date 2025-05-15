@@ -68,7 +68,9 @@ const SearchContent = () => {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold">
-                  {query} 검색 결과
+                  {`"`}
+                  <span className="text-[#0E74F9]">{query}</span>
+                  {`" 검색 결과`}
                   {category !== 'all' && (
                     <span className="text-gray-500 text-lg ml-2">
                       ({getCategoryName(category)} 카테고리)
