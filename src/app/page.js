@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import SearchBar from '../components/SearchBar';
-import SearchIcon from '../components/icons/SearchIcon';
+import CategorySection from '../components/CategorySection';
 import { CATEGORY_LIST, getCategoryName } from '@/constants/categories';
 
 // api로 부터 받아올 뉴스데이터
@@ -82,60 +81,18 @@ const NewsPreview = ({ category }) => {
 };
 
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('politics');
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-
-  const handleSearch = (query, category) => {
-    console.log('Searching for:', query, 'in category:', category);
-    setSearchQuery(query);
-  };
 
   return (
     <div className="min-h-screen bg-white">
       <Header />
       
-      {/* 카테고리 섹션 */}
-      <section className="bg-white">
-        <div className="container mx-auto px-4">
-          <div className="flex gap-6 overflow-x-auto py-2 border-b border-gray-200">
-            {CATEGORY_LIST.map(category => (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`pb-1 font-semibold text-base border-b-2 transition-all duration-150 whitespace-nowrap
-                  ${selectedCategory === category.id
-                    ? 'text-[#0E74F9] border-[#0E74F9]'
-                    : 'text-gray-800 border-transparent hover:text-[#0E74F9]'}
-                `}
-                style={{ background: 'none' }}
-              >
-                {category.name}
-              </button>
-            ))}
-            <button
-              onClick={() => setIsSearchVisible(!isSearchVisible)}
-              className="pb-1 font-semibold text-base border-b-2 transition-all duration-150 whitespace-nowrap text-gray-800 border-transparent hover:text-[#0E74F9] flex items-center gap-1"
-              style={{ background: 'none' }}
-            >
-              <SearchIcon className="w-4 h-4" />
-              검색
-            </button>
-          </div>
-        </div>
-      </section>
+      <CategorySection 
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+      />
 
       <main className="container mx-auto px-4 py-8">
-        {/* 검색 섹션 */}
-        <section className={`transition-all duration-300 ${isSearchVisible ? 'mb-8' : 'mb-0 h-0 overflow-hidden'}`}>
-          <div className="max-w-2xl mx-auto">
-            <SearchBar 
-              onSearch={handleSearch}
-              isVisible={isSearchVisible}
-            />
-          </div>
-        </section>
-
         {/* 뉴스 미리보기 섹션 */}
         <section>
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
