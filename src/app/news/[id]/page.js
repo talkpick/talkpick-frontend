@@ -7,7 +7,7 @@ import Footer from '@/components/Footer';
 import CategorySection from '@/components/CategorySection';
 import parse from 'html-react-parser';
 import { getCategoryId } from '@/constants/categories';
-
+import { getNewsDetail } from '@/app/api/news/[id]/newsDetailApi';
 
 const NewsDetailPage = () => {
   const params = useParams();
@@ -19,11 +19,13 @@ const NewsDetailPage = () => {
   const fetchNewsDetail = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/news/${params.id}`);
-      if (!response.ok) {
-        throw new Error(response.data.message);
-      }
-      const { data } = await response.json();
+      const response = await getNewsDetail(params.id);
+      // if (!response.ok) {
+      //   throw new Error(response.data.message);
+      // }
+      // const data = response.data.data;
+      console.log(response);
+      const data = response.data;
       // API 응답 데이터를 프론트엔드 형식에 맞게 변환
       const newsData = {
         id: data.newsId,
