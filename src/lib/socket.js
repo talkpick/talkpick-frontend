@@ -40,34 +40,40 @@ class SocketService {
     // 4) STOMP CONNECT 요청, 헤더에 JWT 토큰 포함
     const headers = accessToken ? { Authorization: 'Bearer ' + accessToken } : {};
     console.log('[SocketService] 헤더 설정:', headers);
-    this.stompClient.connect(
-      headers,
-      frame => {
-        console.log('[STOMP] 연결 성공:', frame);
-        this.subscription = this.stompClient.subscribe(
-          `/topic/chat.${articleId}`,
-          msg => {
-            try {
-              const chat = JSON.parse(msg.body);
-              onMessage && onMessage(chat);
-            } catch (e) {
-              console.error('[SocketService] 메시지 파싱 오류', e);
+
+    return new Promise((resolve, reject) => {
+      this.stompClient.connect(
+        headers,
+        frame => {
+          console.log('[STOMP] 연결 성공:', frame);
+          this.subscription = this.stompClient.subscribe(
+            `/topic/chat.${articleId}`,
+            msg => {
+              try {
+                const chat = JSON.parse(msg.body);
+                onMessage && onMessage(chat);
+              } catch (e) {
+                console.error('[SocketService] 메시지 파싱 오류', e);
+              }
             }
-          }
-        );
-      },
-      error => {
-        console.error('[STOMP] 연결 오류:', error);
-      }
-    );
+          );
+          resolve(); // 연결 완료
+        },
+        error => {
+          console.error('[STOMP] 연결 오류:', error);
+          reject(error); // 연결 실패
+        }
+      );
+    });
   }
 
   /**
      * 채팅 메시지를 서버에 전송합니다.
      * @param {string} articleId - 채팅방 ID
      * @param {string} content - 메시지 내용
+     * @param {string} messageType - 메시지 타입 (CHAT, JOIN, LEAVE)
      */
-  sendMessage(articleId, content) {
+  sendMessage(articleId, content, messageType= 'CHAT') {
     if (!this.stompClient || !this.stompClient.connected) {
       console.warn('[SocketService] STOMP 연결이 없습니다.');
       return;
@@ -77,8 +83,25 @@ class SocketService {
       sender: this.nickname,
       content,
       timestamp: new Date().toISOString().slice(0,16),
-      messageType: 'CHAT'
+      messageType: messageType
     };
+    console.log('[SocketService] 메시지 전송:', payload);
+    this.stompClient.send('/app/chat.send', {}, JSON.stringify(payload));
+  }
+
+  sendRoomMessage(articleId, content, messageType) {
+    if (!this.stompClient || !this.stompClient.connected) {
+      console.warn('[SocketService] STOMP 연결이 없습니다.');
+      return;
+    }
+    const payload = {
+      articleId,
+      sender: "SYSTEM",
+      content,
+      timestamp: new Date().toISOString().slice(0,16),
+      messageType: messageType
+    };
+    console.log('[SocketService] 메시지 전송:', payload);
     this.stompClient.send('/app/chat.send', {}, JSON.stringify(payload));
   }
 

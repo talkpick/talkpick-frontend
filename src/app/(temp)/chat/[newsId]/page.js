@@ -20,6 +20,14 @@ function ChatRoom() {
   const { nickname } = useContext(AuthContext);
   const articleId = useParams().newsId;
   
+
+  const send = () => {
+    if (input.trim()) {
+      socketService.sendMessage(articleId, input.trim());
+      setInput('');
+    }
+  };
+
   // 메시지 수신 콜백
   const onMessage = (msg) => {
     console.log("onMessage", msg);
@@ -27,15 +35,22 @@ function ChatRoom() {
   };
 
   // 채팅방 열기
-  const openChat = () => {
+  const openChat = async() => {
+    console.log(nickname);
+    try {
+      await socketService.connect(articleId, nickname, onMessage);
     setVisible(true);
     setMessages([]);
-    console.log(nickname);
-    socketService.connect(articleId, nickname, onMessage);
+    console.log("Socketservice 를 통한 연결 성공");
+    socketService.sendRoomMessage(articleId, nickname+"님이 채팅방에 참여했습니다.", "JOIN");
+    } catch (error) {
+      console.error("Socketservice 를 통한 연결 실패", error);
+    }
   };
 
   // 채팅방 나가기
   const leaveChat = () => {
+    socketService.sendRoomMessage(articleId, nickname+"님이 퇴장하였습니다.", "LEAVE");
     socketService.disconnect();
     setVisible(false);
     setMessages([]);
@@ -54,13 +69,6 @@ function ChatRoom() {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [messages]);
-
-  const send = () => {
-    if (input.trim()) {
-      socketService.sendMessage(articleId, input.trim());
-      setInput('');
-    }
-  };
 
   return (
     <div>
