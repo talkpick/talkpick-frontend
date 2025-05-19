@@ -85,10 +85,36 @@ function ChatRoom() {
             {messages.map((msg, idx) => (
               <div
                 key={idx}
-                style={{ textAlign: msg.sender === nickname ? 'right' : 'left', margin: '4px 0' }}
+                style={{
+                  textAlign: msg.sender === 'SYSTEM' ? 'center' : msg.sender === nickname ? 'right' : 'left',
+                  margin: '8px 0',
+                  color: msg.sender === 'SYSTEM' ? '#666' : 'inherit'
+                }}
               >
-                <strong>{msg.sender}</strong>: {msg.content}
-                <div style={{ fontSize: '0.75em', color: '#888' }}>{formatDate(msg.timestamp)}</div>
+                {msg.sender !== 'SYSTEM' && msg.sender !== nickname && (
+                  <strong style={{ display: 'block', marginBottom: '4px' }}>{msg.sender}</strong>
+                )}
+                <div style={{
+                  display: 'inline-block',
+                  padding: msg.sender === 'SYSTEM' ? '4px 8px' : '8px 12px',
+                  borderRadius: msg.sender === 'SYSTEM' ? '4px' : '12px',
+                  backgroundColor: msg.sender === nickname ? '#007bff' : msg.sender === 'SYSTEM' ? 'transparent' : '#e9ecef',
+                  color: msg.sender === nickname ? 'white' : msg.sender === 'SYSTEM' ? '#666' : 'inherit',
+                  maxWidth: '70%',
+                  fontSize: msg.sender === 'SYSTEM' ? '0.85em' : 'inherit'
+                }}>
+                  {msg.content}
+                </div>
+                {msg.sender !== 'SYSTEM' && (
+                  <div style={{ 
+                    fontSize: '0.75em', 
+                    color: '#888',
+                    marginTop: '4px',
+                    textAlign: msg.sender === nickname ? 'right' : 'left'
+                  }}>
+                    {formatDate(msg.timestamp)}
+                  </div>
+                )}
               </div>
             ))}
           </div>
