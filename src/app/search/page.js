@@ -122,9 +122,9 @@ const SearchContent = () => {
                               className="w-full h-[150px] object-cover rounded-lg"
                             />
                           </div>
-                          <div className="flex-grow">
+                          <div className="flex-grow"> 
                             <h2 className="text-xl font-semibold mb-2 hover:text-[#0E74F9] transition-colors">{result.title}</h2>
-                            <p className="text-gray-600 mb-3">{truncateText(result.content, 150)}</p>
+                            <p className="text-gray-600 mb-3">{truncateText(JSON.parse(result.content).join(''), 150)}</p>
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               <span>{result.category}</span>
                               <span>{formatDate(result.publishedAt)}</span>
