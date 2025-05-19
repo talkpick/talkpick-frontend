@@ -9,6 +9,7 @@ import { getCategoryName } from '@/constants/categories';
 import { search } from '@/app/api/search/searchApi';
 import { useRouter } from 'next/navigation';
 import { formatDate, truncateText } from '@/app/search/utils';
+import parse from 'html-react-parser';
 
 const SearchContent = () => {
   const searchParams = useSearchParams();
@@ -117,13 +118,13 @@ const SearchContent = () => {
                         <div className="flex flex-col md:flex-row gap-4">
                           <div className="w-full md:w-[200px] md:flex-shrink-0">
                             <img 
-                              src={result.imageUrl || 'https://picsum.photos/200/150'} 
+                              src={result.imageUrl} 
                               alt={result.title}
                               className="w-full h-[150px] object-cover rounded-lg"
                             />
                           </div>
                           <div className="flex-grow"> 
-                            <h2 className="text-xl font-semibold mb-2 hover:text-[#0E74F9] transition-colors">{result.title}</h2>
+                            <h2 className="text-xl font-semibold mb-2 hover:text-[#0E74F9] transition-colors">{parse(result.title)}</h2>
                             <p className="text-gray-600 mb-3">{truncateText(JSON.parse(result.content).join(''), 150)}</p>
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               <span>{result.category}</span>
