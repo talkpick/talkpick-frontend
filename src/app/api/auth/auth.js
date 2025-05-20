@@ -34,7 +34,7 @@ export const refresh = async (refreshToken) => {
 
 export const signOut = async () => {
   try {
-    await instance.post('/api/auth/logout');
+    await instance.post('/api/auth/signOut');
   } catch (error) {
     throw error.response?.data.message || { message: '로그아웃 중 오류가 발생했습니다.' };
   }
