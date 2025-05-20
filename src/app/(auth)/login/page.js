@@ -6,6 +6,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { signIn } from '@/app/api/auth/auth';
+import PasswordToggleIcon from '@/components/PasswordToggleIcon';
 
 // 로딩 컴포넌트
 const LoadingSpinner = () => (
@@ -25,6 +26,7 @@ const LoginFormContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [showErrorToast, setShowErrorToast] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // 페이지 로드 시 rememberedUserId 확인
   useEffect(() => {
@@ -77,6 +79,10 @@ const LoginFormContent = () => {
     }
   };
 
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <>
       <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-white text-black-500 border border-green-500 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} flex items-center`}>
@@ -112,19 +118,25 @@ const LoginFormContent = () => {
               disabled={isLoading}
             />
 
-            <input
-              id="password"
-              type="password"
-              placeholder="비밀번호"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="
-                bg-gray-100 text-gray-900 border-0 rounded-md p-2 mb-4
-                focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
-                transition ease-in-out duration-150
-              "
-              disabled={isLoading}
-            />
+            <div className="relative mb-4">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="비밀번호"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="
+                  bg-gray-100 text-gray-900 border-0 rounded-md p-2 w-full
+                  focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
+                  transition ease-in-out duration-150
+                "
+                disabled={isLoading}
+              />
+              <PasswordToggleIcon 
+                showPassword={showPassword} 
+                toggleShowPassword={toggleShowPassword} 
+              />
+            </div>
 
             <div className="flex items-center justify-between">
               <label htmlFor="remember-me" className="text-sm text-gray-900 cursor-pointer flex items-center">

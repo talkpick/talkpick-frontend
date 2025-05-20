@@ -7,7 +7,14 @@ import Footer from '@/components/Footer';
 import CategorySection from '@/components/CategorySection';
 import parse from 'html-react-parser';
 import { getCategoryId } from '@/constants/categories';
+import { getNewsDetail } from '@/app/api/news/[id]/newsDetailApi';
 
+// 이미지 URL에서 사이즈 정보 제거하는 함수
+const removeImageSize = (url) => {
+  if (!url) return url;
+  // /i/숫자/숫자/숫자 패턴을 찾아서 제거
+  return url.replace(/\/i\/\d+\/\d+\/\d+/, '');
+};
 
 const NewsDetailPage = () => {
   const params = useParams();
@@ -15,21 +22,26 @@ const NewsDetailPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   const fetchNewsDetail = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/news/${params.id}`);
-      if (!response.ok) {
-        throw new Error(response.data.message);
-      }
-      const { data } = await response.json();
+      const response = await getNewsDetail(params.id);
+      // if (!response.ok) {
+      //   throw new Error(response.data.message);
+      // }
+      // const data = response.data.data;
+      console.log(response);
+      const data = response.data;
       // API 응답 데이터를 프론트엔드 형식에 맞게 변환
       const newsData = {
         id: data.newsId,
         title: data.title,
         category: data.category,
+        summary: data.summary,
         content: data.content,
+        imageUrl: removeImageSize(data.imageUrl),
         date: new Date(data.publishDate).toLocaleString('ko-KR', {
           year: 'numeric',
           month: '2-digit',
@@ -54,6 +66,25 @@ const NewsDetailPage = () => {
     fetchNewsDetail();
   }, [params.id]);
 
+  // content를 문단별로 나누는 함수
+  const parseContent = (content) => {
+    try {
+      // 문자열을 파싱하여 배열로 변환
+      const paragraphs = JSON.parse(content);
+      
+      // 각 문단을 p 태그로 감싸서 반환
+      return paragraphs.map((paragraph, index) => (
+        <p key={index} className="mb-4 leading-relaxed text-lg">
+          {parse(paragraph)}
+        </p>
+      ));
+    } catch (error) {
+      console.error('Content 파싱 중 오류 발생:', error);
+      // 파싱 실패 시 원본 content를 그대로 반환
+      return <p className="mb-4 leading-relaxed text-lg">{parse(content)}</p>;
+    }
+  };
+  
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
@@ -131,15 +162,37 @@ const NewsDetailPage = () => {
             </div>
 
             {/* 제목 */}
-            <h1 className="text-3xl font-bold mb-2">{news.title}</h1>
+            <h1 className="text-3xl font-bold mb-2">{parse(news.title)}</h1>
             
-            {/* 날짜 */}
-            <p className="text-sm text-gray-500 mb-6">{news.date}</p>
+            {/* 날짜 및 요약보기 버튼 */}
+            <div className="flex justify-between items-center mb-6">
+              <p className="text-sm text-gray-500">{news.date}</p>
+              <button
+                onClick={() => setIsSummaryOpen(true)}
+                className="px-4 py-2 bg-white text-[#0E74F9] border border-[#0E74F9] rounded-lg hover:bg-[#0E74F9] hover:text-white transition-colors flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                </svg>
+                요약보기
+              </button>
+            </div>
+
+            {/* 이미지 */}
+            {news.imageUrl && (
+              <div className="mb-8 flex justify-center">
+                <img 
+                  src={news.imageUrl} 
+                  alt={news.title}
+                  className="max-w-full h-auto rounded-lg shadow-md"
+                />
+              </div>
+            )}
 
             {/* 본문 */}
             <div className="space-y-6">
-              <div className="prose prose-lg">
-                {parse(news.content)}
+              <div className="prose prose-lg max-w-none">
+                {parseContent(news.content)}
               </div>
             </div>
 
@@ -162,6 +215,26 @@ const NewsDetailPage = () => {
           </article>
         </div>
       </main>
+
+      {/* 요약 팝업 */}
+      {isSummaryOpen && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white/95 rounded-lg p-6 max-w-2xl w-full mx-4 relative shadow-xl">
+            <button
+              onClick={() => setIsSummaryOpen(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h2 className="text-2xl font-bold mb-4 text-[#0E74F9]">요약</h2>
+            <div className="prose prose-lg">
+              <p className="text-gray-700 leading-relaxed">{news.summary}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

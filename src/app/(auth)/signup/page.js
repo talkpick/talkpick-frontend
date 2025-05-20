@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signUp } from '@/app/api/auth/auth';
 import { validateSignUpForm, validatePassword, validatePasswordConfirm, validateName, validateNickname, validateEmail, validateGender, validateBirthDate, validateAccount } from './signUpValidator';
+import PasswordToggleIcon from '@/components/PasswordToggleIcon';
 
 const SignupForm = () => {
   const router = useRouter();
@@ -22,6 +23,8 @@ const SignupForm = () => {
 
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [passwordChecks, setPasswordChecks] = useState({
     length: false,
     uppercase: false,
@@ -29,6 +32,14 @@ const SignupForm = () => {
     number: false,
     special: false
   });
+
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleShowPasswordConfirm = () => {
+    setShowPasswordConfirm(!showPasswordConfirm);
+  };
 
   const validateField = (name, value) => {
     switch (name) {
@@ -162,18 +173,24 @@ const SignupForm = () => {
 
             <div className="mb-4">
               <label className="block text-sm text-gray-700 mb-2">비밀번호</label>
-              <input
-                name="password"
-                type="password"
-                placeholder="비밀번호"
-                value={formData.password}
-                onChange={handleChange}
-                className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 w-full
-                  focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
-                  transition ease-in-out duration-150
-                  ${errors.password ? 'border-red-500' : ''}`}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="비밀번호"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 w-full
+                    focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
+                    transition ease-in-out duration-150
+                    ${errors.password ? 'border-red-500' : ''}`}
+                  disabled={isLoading}
+                />
+                <PasswordToggleIcon 
+                  showPassword={showPassword} 
+                  toggleShowPassword={toggleShowPassword} 
+                />
+              </div>
               <div className="text-sm text-gray-600 mt-2 space-y-1">
                 <div className="flex items-center">
                   <span className={`mr-2 ${passwordChecks.length ? 'text-green-500' : 'text-red-500'}`}>
@@ -210,18 +227,24 @@ const SignupForm = () => {
 
             <div className="mb-4">
               <label className="block text-sm text-gray-700 mb-2">비밀번호 확인</label>
-              <input
-                name="passwordConfirm"
-                type="password"
-                placeholder="비밀번호 확인"
-                value={formData.passwordConfirm}
-                onChange={handleChange}
-                className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 w-full
-                  focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
-                  transition ease-in-out duration-150
-                  ${errors.passwordConfirm ? 'border-red-500' : ''}`}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <input
+                  name="passwordConfirm"
+                  type={showPasswordConfirm ? "text" : "password"}
+                  placeholder="비밀번호 확인"
+                  value={formData.passwordConfirm}
+                  onChange={handleChange}
+                  className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 w-full
+                    focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
+                    transition ease-in-out duration-150
+                    ${errors.passwordConfirm ? 'border-red-500' : ''}`}
+                  disabled={isLoading}
+                />
+                <PasswordToggleIcon 
+                  showPassword={showPasswordConfirm} 
+                  toggleShowPassword={toggleShowPasswordConfirm} 
+                />
+              </div>
               <div className="h-5 mt-1">
                 {errors.passwordConfirm && (
                   <p className="text-sm text-red-500">{errors.passwordConfirm}</p>
