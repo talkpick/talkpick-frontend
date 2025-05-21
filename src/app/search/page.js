@@ -5,10 +5,9 @@ import { useState, useEffect, Suspense } from 'react';
 import SearchBar from '@/components/SearchBar';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { getCategoryName } from '@/constants/categories';
 import { search } from '@/app/api/search/searchApi';
 import { useRouter } from 'next/navigation';
-import { formatDate, truncateText } from '@/app/search/utils';
+import { formatDate, truncateText } from '@/lib/utils';
 import parse from 'html-react-parser';
 
 const SearchContent = () => {
@@ -16,7 +15,6 @@ const SearchContent = () => {
   const router = useRouter();
 
   const query = searchParams.get('q');
-  const category = searchParams.get('category');
   const pageParam = searchParams.get('page');
 
   const [currentPage, setCurrentPage] = useState(pageParam ? parseInt(pageParam) : 1);
@@ -37,7 +35,7 @@ const SearchContent = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await search(query, category, currentPage, itemsPerPage);
+      const data = await search(query, currentPage, itemsPerPage);
       setFetchedResults(data.data.newsSearchResponseList);
       setTotalResults(data.data.total);
     } catch (error) {
@@ -51,12 +49,12 @@ const SearchContent = () => {
 
   useEffect(() => {
     fetchSearchResults();
-  }, [query, category, currentPage]);
+  }, [query, currentPage]);
 
   // 검색어나 카테고리가 변경되면 페이지를 1로 리셋
   useEffect(() => {
     setCurrentPage(1);
-  }, [query, category]);
+  }, [query]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -73,11 +71,6 @@ const SearchContent = () => {
     <>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <SearchBar 
-              isVisible={true}
-            />
-          </div>
 
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
@@ -95,11 +88,6 @@ const SearchContent = () => {
                   {`"`}
                   <span className="text-[#0E74F9]">{query}</span>
                   {`" 검색 결과`}
-                  {category !== 'all' && (
-                    <span className="text-gray-500 text-lg ml-2">
-                      ({getCategoryName(category)} 카테고리)
-                    </span>
-                  )}
                 </h1>
                 <span className="text-gray-500">
                   {totalResults}개의 결과
@@ -112,7 +100,7 @@ const SearchContent = () => {
                     {fetchedResults.map((result, index) => (
                       <a 
                         key={index}
-                        href={`/news/${result.newsId}`}
+                        href={`/news/detail/${result.newsId}`}
                         className="block p-4 border border-gray-200 rounded-lg hover:border-[#0E74F9] transition-all duration-200"
                       >
                         <div className="flex flex-col md:flex-row gap-4">

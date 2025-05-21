@@ -64,24 +64,25 @@ instance.interceptors.request.use((config) => {
   return config;
 });
 
-// Response 인터셉터: 401 에러 발생 시 토큰 재갱신 시도
+// Response 인터셉터
 instance.interceptors.response.use(
   response => response,
   async error => {
     const originalRequest = error.config;
     const status = error.response?.status;
 
-    // 401 에러가 아닌 경우 바로 에러 반환
-    if (!isUnauthorizedError(status)) {
-      return Promise.reject(error);
-    }
-
     // 로그인/회원가입 요청은 토큰 갱신 시도하지 않음
     if (isAuthRequest(originalRequest.url)) {
       return Promise.reject(error);
     }
 
-    // 토큰 갱신 요청이 실패한 경우 로그아웃
+    // 401 에러가 아닌 경우 바로 에러 반환
+    if (!isUnauthorizedError(status)) {
+      console.log('401 에러가 아닌 경우 바로 에러 반환');
+      return Promise.reject(error);
+    }
+
+    // 401 에러 나서 토큰 갱신 요청이 실패한 경우 로그아웃
     if (isRefreshRequest(originalRequest.url)) {
       handleRefreshFailure();
       return Promise.reject(error);

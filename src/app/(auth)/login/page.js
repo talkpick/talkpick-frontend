@@ -6,7 +6,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { signIn } from '@/app/api/auth/auth';
-import PasswordToggleIcon from '@/components/PasswordToggleIcon';
+import PasswordToggleIcon from '@/components/icons/PasswordToggleIcon';
 
 // 로딩 컴포넌트
 const LoadingSpinner = () => (

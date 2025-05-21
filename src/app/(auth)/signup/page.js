@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signUp } from '@/app/api/auth/auth';
 import { validateSignUpForm, validatePassword, validatePasswordConfirm, validateName, validateNickname, validateEmail, validateGender, validateBirthDate, validateAccount } from './signUpValidator';
-import PasswordToggleIcon from '@/components/PasswordToggleIcon';
+import PasswordToggleIcon from '@/components/icons/PasswordToggleIcon';
 
 const SignupForm = () => {
   const router = useRouter();
