@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { socketService } from '@/lib/socket';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useParams } from 'next/navigation';
-import { formatDate } from '@/app/search/utils';
+import { formatDate } from '@/lib/utils';
 
 /**
  * ChatRoom 컴포넌트

@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import CategorySection from '@/components/CategorySection';
 import parse from 'html-react-parser';
 import { getCategoryId } from '@/constants/categories';
-import { getNewsDetail } from '@/app/api/news/[id]/newsDetailApi';
+import { getNewsDetail } from '@/app/api/news/detail/[id]/newsDetailApi';
 
 // 이미지 URL에서 사이즈 정보 제거하는 함수
 const removeImageSize = (url) => {
@@ -28,10 +27,7 @@ const NewsDetailPage = () => {
     setIsLoading(true);
     try {
       const response = await getNewsDetail(params.id);
-      // if (!response.ok) {
-      //   throw new Error(response.data.message);
-      // }
-      // const data = response.data.data;
+
       console.log(response);
       const data = response.data;
       // API 응답 데이터를 프론트엔드 형식에 맞게 변환

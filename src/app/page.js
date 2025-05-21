@@ -1,109 +1,86 @@
 'use client';
 
-import { useState } from 'react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import CategorySection from '../components/CategorySection';
-import { CATEGORY_LIST, getCategoryName } from '@/constants/categories';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getLatestNews } from '@/app/api/news/newsListApi';
+import NewsList from '@/components/news/NewsList';
+import NewsCarousel from '@/components/news/NewsCarousel';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
-// api로 부터 받아올 뉴스데이터
-const NewsPreview = ({ category }) => {
-  const dummyNews = [
-    {
-      id: 1,
-      title: `${category.name} 관련 최신 뉴스 1`,
-      summary: '뉴스 요약 내용이 들어갈 자리입니다...',
-      category: category.name,
-      date: '2025-05-10',
-      image: 'https://picsum.photos/200/150'
-    },
-    {
-      id: 2,
-      title: `${category.name} 관련 최신 뉴스 2`,
-      summary: '뉴스 요약 내용이 들어갈 자리입니다...',
-      category: category.name,
-      date: '2025-05-10',
-      image: 'https://picsum.photos/200/150'
-    },
-    {
-      id: 3,
-      title: `${category.name} 관련 최신 뉴스 3`,
-      summary: '뉴스 요약 내용이 들어갈 자리입니다...',
-      category: category.name,
-      date: '2025-05-10',
-      image: 'https://picsum.photos/200/150'
-    },
-    {
-      id: 4,
-      title: `${category.name} 관련 최신 뉴스 4`,
-      summary: '뉴스 요약 내용이 들어갈 자리입니다...',
-      category: category.name,
-      date: '2025-05-10',
-      image: 'https://picsum.photos/200/150'
-    },
-    {
-      id: 5,
-      title: `${category.name} 관련 최신 뉴스 5`,
-      summary: '뉴스 요약 내용이 들어갈 자리입니다...',
-      category: category.name,
-      date: '2025-05-10',
-      image: 'https://picsum.photos/200/150'
+export default function HomePage() {
+  const [news, setNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [hasNext, setHasNext] = useState(false);
+  const [lastIndex, setLastIndex] = useState(-1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const PAGE_SIZE = 5;
+  const router = useRouter();
+
+  const fetchNews = async (isLoadMore = false) => {
+    try {
+      if (isLoadMore) {
+        setIsLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      
+      const data = await getLatestNews(lastIndex, PAGE_SIZE);
+      setHasNext(data.data.hasNext);
+      
+      if (isLoadMore) {
+        setNews(prev => [...prev, ...data.data.items]);
+      } else {
+        setNews(data.data.items);
+      }
+      
+      setLastIndex(prev => prev === -1 ? PAGE_SIZE : prev + PAGE_SIZE);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchNews();
+  }, []);
+
+  const handleLoadMore = () => {
+    fetchNews(true);
+  };
 
   return (
-    <div className="space-y-4">
-      {dummyNews.map(news => (
-        <a 
-          key={news.id}
-          href={`/news/${news.id}`}
-          className="block bg-white p-4 rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-[#0E74F9]"
-        >
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="w-full md:w-[200px] md:flex-shrink-0">
-              <img 
-                src={news.image} 
-                alt={news.title}
-                className="w-full h-[150px] object-cover rounded-lg"
-              />
-            </div>
-            <div className="flex-grow">
-              <h3 className="text-lg font-semibold mb-2 hover:text-[#0E74F9] transition-colors">{news.title}</h3>
-              <p className="text-gray-600 mb-2">{news.summary}</p>
-              <p className="text-gray-600 mb-2">{news.category}</p>
-              <span className="text-sm text-gray-500">{news.date}</span>
+    <>
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        <NewsCarousel />
+        {loading ? (
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E74F9] mx-auto mb-4"></div>
+              <p className="text-gray-600">최신 뉴스를 불러오는 중입니다...</p>
             </div>
           </div>
-        </a>
-      ))}
-    </div>
-  );
-};
-
-export default function Home() {
-  const [selectedCategory, setSelectedCategory] = useState('politics');
-
-  return (
-    <div className="min-h-screen bg-white">
-      <Header />
-      
-      <CategorySection 
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-      />
-
-      <main className="container mx-auto px-4 py-8">
-        {/* 뉴스 미리보기 섹션 */}
-        <section>
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <span className="text-[#0E74F9]">#</span>
-            {getCategoryName(selectedCategory)} 뉴스
-          </h2>
-          <NewsPreview category={{ id: selectedCategory, name: getCategoryName(selectedCategory) }} />
-        </section>
-      </main>
-
+        ) : error ? (
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-red-500 mb-2">에러가 발생했습니다</p>
+              <p className="text-gray-600">{error}</p>
+            </div>
+          </div>
+        ) : (
+          <NewsList 
+            news={news} 
+            hasNext={hasNext}
+            onLoadMore={handleLoadMore}
+            isLoading={isLoadingMore}
+          />
+        )}
+      </div>
       <Footer />
-    </div>
+    </>
   );
 }
