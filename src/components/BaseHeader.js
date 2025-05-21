@@ -11,10 +11,10 @@ const BaseHeader = ({ children }) => {
   const handleLogout = async () => {
     try {
       await signOut(accessToken);
-      logout();
     } catch (error) {
-      logout();
       console.error('로그아웃 중 오류 발생:', error);
+    } finally {
+      logout();
     }
   };
 

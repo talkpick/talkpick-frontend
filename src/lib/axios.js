@@ -3,7 +3,6 @@ import axios from 'axios';
 import {
   isUnauthorizedError,
   isAuthRequest,
-  isRefreshRequest,
   isRetriedRequest,
 } from './requestValidators';
 
@@ -71,29 +70,22 @@ instance.interceptors.response.use(
     const originalRequest = error.config;
     const status = error.response?.status;
 
-    // 로그인/회원가입 요청은 토큰 갱신 시도하지 않음
+    // 1. 인증 관련 요청은 토큰 갱신 시도하지 않음
     if (isAuthRequest(originalRequest.url)) {
       return Promise.reject(error);
     }
 
-    // 401 에러가 아닌 경우 바로 에러 반환
+    // 2. 401 에러가 아니면 에러 반환
     if (!isUnauthorizedError(status)) {
-      console.log('401 에러가 아닌 경우 바로 에러 반환');
       return Promise.reject(error);
     }
 
-    // 401 에러 나서 토큰 갱신 요청이 실패한 경우 로그아웃
-    if (isRefreshRequest(originalRequest.url)) {
-      handleRefreshFailure();
-      return Promise.reject(error);
-    }
-
-    // 이미 재시도한 요청은 에러 반환
+    // 3. 이미 재시도한 요청이면 에러 반환
     if (isRetriedRequest(originalRequest)) {
       return Promise.reject(error);
     }
 
-    // 토큰 갱신 시도
+    // 4. 토큰 갱신 시도
     return handleTokenRefresh(originalRequest);
   }
 );
