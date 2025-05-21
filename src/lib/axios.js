@@ -22,7 +22,7 @@ const refreshAxios = axios.create({
 });
 
 // 토큰 갱신 함수
-const refreshAccessToken = async () => {
+export const refreshAccessToken = async () => {
   const rt = localStorage.getItem('refreshToken');
   if (!rt) throw new Error('No refresh token');
 
