@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { socketService } from '@/lib/socket';
 import { AuthContext } from '@/contexts/AuthContext';
-import { useParams } from 'next/navigation';
 import { formatDate } from '@/lib/utils';
 
 /**
@@ -12,13 +11,12 @@ import { formatDate } from '@/lib/utils';
  * - 버튼 클릭 시 WebSocket 연결 후 채팅방 표시
  * - 퇴장 버튼으로 연결 해제
  */
-function ChatRoom() {
+function ChatRoom({ articleId }) {
   const [visible, setVisible] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const containerRef = useRef(null);
   const { nickname } = useContext(AuthContext);
-  const articleId = useParams().newsId;
   
 
   const send = () => {

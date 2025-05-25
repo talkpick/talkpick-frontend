@@ -7,6 +7,9 @@ import Footer from '@/components/Footer';
 import parse from 'html-react-parser';
 import { getCategoryId } from '@/constants/categories';
 import { getNewsDetail } from '@/app/api/news/detail/[id]/newsDetailApi';
+import ChatRoom from '@/components/ChatRoom';
+import ViewCountIcon from '@/components/icons/ViewCountIcon';
+import SummaryIcon from '@/components/icons/SummaryIcon';
 
 // 이미지 URL에서 사이즈 정보 제거하는 함수
 const removeImageSize = (url) => {
@@ -45,7 +48,8 @@ const NewsDetailPage = () => {
           hour: '2-digit',
           minute: '2-digit'
         }),
-        originLink: data.originLink
+        originLink: data.originLink,
+        viewCount: data.viewCount
       };
       
       setNews(newsData);
@@ -139,98 +143,101 @@ const NewsDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white flex flex-col">
       <Header />
       
-      {/* <CategorySection 
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-      /> */}
+      <main className="flex-1 flex flex-col">
+        {/* 뉴스 컨텐츠 영역 - 스크롤 가능 */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="container mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto">
+              <article className="prose lg:prose-xl mx-auto">
+                {/* 카테고리 및 날짜 */}
+                <div className="flex items-center gap-4 mb-4">
+                  <span className="px-4 py-2 bg-gray-100 rounded-full text-base font-medium text-gray-700">
+                    {news.category}
+                  </span>
+                </div>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <article className="prose lg:prose-xl mx-auto">
-            {/* 카테고리 및 날짜 */}
-            <div className="flex items-center gap-4 mb-4">
-              <span className="px-4 py-2 bg-gray-100 rounded-full text-base font-medium text-gray-700">
-                {news.category}
-              </span>
-            </div>
+                {/* 제목 */}
+                <h1 className="text-3xl font-bold mb-2">{parse(news.title)}</h1>
+                
+                {/* 날짜 및 요약보기 버튼 */}
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <p>{news.date}</p>
+                    <div className="flex items-center gap-1">
+                      <ViewCountIcon />
+                      <span>{news.viewCount.toLocaleString()}회</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsSummaryOpen(!isSummaryOpen)}
+                    className="px-4 py-2 bg-white text-[#0E74F9] border border-[#0E74F9] rounded-lg hover:bg-[#0E74F9] hover:text-white transition-colors flex items-center gap-2"
+                  >
+                    <SummaryIcon />
+                    {isSummaryOpen ? '요약접기' : '요약보기'}
+                  </button>
+                </div>
 
-            {/* 제목 */}
-            <h1 className="text-3xl font-bold mb-2">{parse(news.title)}</h1>
-            
-            {/* 날짜 및 요약보기 버튼 */}
-            <div className="flex justify-between items-center mb-6">
-              <p className="text-sm text-gray-500">{news.date}</p>
-              <button
-                onClick={() => setIsSummaryOpen(true)}
-                className="px-4 py-2 bg-white text-[#0E74F9] border border-[#0E74F9] rounded-lg hover:bg-[#0E74F9] hover:text-white transition-colors flex items-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                </svg>
-                요약보기
-              </button>
-            </div>
+                {/* 요약 섹션 */}
+                <div className={`mb-6 transition-all duration-300 ease-in-out ${isSummaryOpen ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                  <div className="border-t pt-4">
+                    <h2 className="text-2xl font-bold mb-4 text-[#0E74F9]">뉴스 요약</h2>
+                    <div className="prose prose-lg">
+                      <p className="text-gray-700 leading-relaxed">{news.summary}</p>
+                    </div>
+                  </div>
+                </div>
 
-            {/* 이미지 */}
-            {news.imageUrl && (
-              <div className="mb-8 flex justify-center">
-                <img 
-                  src={news.imageUrl} 
-                  alt={news.title}
-                  className="max-w-full h-auto rounded-lg shadow-md"
-                />
-              </div>
-            )}
+                {/* 이미지 */}
+                {news.imageUrl && (
+                  <div className="mb-8 flex justify-center">
+                    <img 
+                      src={news.imageUrl} 
+                      alt={news.title}
+                      className="max-w-full h-auto rounded-lg shadow-md"
+                    />
+                  </div>
+                )}
 
-            {/* 본문 */}
-            <div className="space-y-6">
-              <div className="prose prose-lg max-w-none">
-                {parseContent(news.content)}
-              </div>
-            </div>
+                {/* 본문 */}
+                <div className="space-y-6">
+                  <div className="prose prose-lg max-w-none">
+                    {parseContent(news.content)}
+                  </div>
+                </div>
 
-            {/* 원문 링크 */}
-            {news.originLink && (
-              <div className="flex justify-end mt-8">
-                <a 
-                  href={news.originLink} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-[#0E74F9] hover:underline flex items-center gap-1"
-                >
-                  원문 보기
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </div>
-            )}
-          </article>
-        </div>
-      </main>
-
-      {/* 요약 팝업 */}
-      {isSummaryOpen && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white/95 rounded-lg p-6 max-w-2xl w-full mx-4 relative shadow-xl">
-            <button
-              onClick={() => setIsSummaryOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <h2 className="text-2xl font-bold mb-4 text-[#0E74F9]">요약</h2>
-            <div className="prose prose-lg">
-              <p className="text-gray-700 leading-relaxed">{news.summary}</p>
+                {/* 원문 링크 */}
+                {news.originLink && (
+                  <div className="flex justify-end mt-8">
+                    <a 
+                      href={news.originLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-[#0E74F9] hover:underline flex items-center gap-1"
+                    >
+                      원문 보기
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                )}
+              </article>
             </div>
           </div>
         </div>
-      )}
+
+        {/* 채팅방 영역 - 하단 고정 */}
+        <div className="border-t bg-white">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <ChatRoom articleId={params.id} />
+            </div>
+          </div>
+        </div>
+      </main>
 
       <Footer />
     </div>
