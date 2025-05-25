@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -10,6 +10,7 @@ import { getNewsDetail } from '@/app/api/news/detail/[id]/newsDetailApi';
 import ChatRoom from '@/components/ChatRoom';
 import ViewCountIcon from '@/components/icons/ViewCountIcon';
 import SummaryIcon from '@/components/icons/SummaryIcon';
+import { publicSocketService } from '@/lib/socket';
 
 // 이미지 URL에서 사이즈 정보 제거하는 함수
 const removeImageSize = (url) => {
@@ -25,6 +26,13 @@ const NewsDetailPage = () => {
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [userCount, setUserCount] = useState(0);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const chatRoomRef = useRef(null);
+
+  const scrollToChatRoom = () => {
+    chatRoomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const fetchNewsDetail = async () => {
     setIsLoading(true);
@@ -64,6 +72,19 @@ const NewsDetailPage = () => {
 
   useEffect(() => {
     fetchNewsDetail();
+  }, [params.id]);
+
+  // 채팅방 인원수 구독
+  useEffect(() => {
+    const handleUserCount = (count) => {
+      setUserCount(count);
+    };
+
+    publicSocketService.connectToArticle(params.id, handleUserCount);
+
+    return () => {
+      publicSocketService.disconnect();
+    };
   }, [params.id]);
 
   // content를 문단별로 나누는 함수
@@ -143,101 +164,309 @@ const NewsDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-gray-100">
       <Header />
       
-      <main className="flex-1 flex flex-col">
-        {/* 뉴스 컨텐츠 영역 - 스크롤 가능 */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="container mx-auto px-4 py-8">
-            <div className="max-w-4xl mx-auto">
-              <article className="prose lg:prose-xl mx-auto">
-                {/* 카테고리 및 날짜 */}
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="px-4 py-2 bg-gray-100 rounded-full text-base font-medium text-gray-700">
-                    {news.category}
-                  </span>
-                </div>
-
-                {/* 제목 */}
-                <h1 className="text-3xl font-bold mb-2">{parse(news.title)}</h1>
+      <div className="flex flex-col items-center">
+        {/* PC 버전 */}
+        <main className="hidden md:block w-full">
+          <div className="max-w-5xl mx-auto p-8">
+            <div className="aspect-[4/3] max-h-[900px] mx-auto">
+              {/* 태블릿 프레임 */}
+              <div className="bg-[#1a1a1a] rounded-[2rem] p-3 h-full shadow-xl relative">
+                {/* 태블릿 상단 카메라 */}
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-gray-800"></div>
                 
-                {/* 날짜 및 요약보기 버튼 */}
-                <div className="flex justify-between items-center mb-6">
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <p>{news.date}</p>
-                    <div className="flex items-center gap-1">
-                      <ViewCountIcon />
-                      <span>{news.viewCount.toLocaleString()}회</span>
+                {/* 태블릿 화면 */}
+                <div className="bg-white rounded-[1.5rem] h-full flex flex-col overflow-hidden">
+                  {/* 뉴스 헤더 영역 */}
+                  <div className="p-6">
+                    {/* 카테고리 */}
+                    <div className="flex items-center gap-4 mb-4">
+                      <span className="px-4 py-2 bg-gray-100 rounded-full text-base font-medium text-gray-700">
+                        {news.category}
+                      </span>
                     </div>
-                  </div>
-                  <button
-                    onClick={() => setIsSummaryOpen(!isSummaryOpen)}
-                    className="px-4 py-2 bg-white text-[#0E74F9] border border-[#0E74F9] rounded-lg hover:bg-[#0E74F9] hover:text-white transition-colors flex items-center gap-2"
-                  >
-                    <SummaryIcon />
-                    {isSummaryOpen ? '요약접기' : '요약보기'}
-                  </button>
-                </div>
 
-                {/* 요약 섹션 */}
-                <div className={`mb-6 transition-all duration-300 ease-in-out ${isSummaryOpen ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
-                  <div className="border-t pt-4">
-                    <h2 className="text-2xl font-bold mb-4 text-[#0E74F9]">뉴스 요약</h2>
-                    <div className="prose prose-lg">
-                      <p className="text-gray-700 leading-relaxed">{news.summary}</p>
-                    </div>
-                  </div>
-                </div>
+                    {/* 제목 */}
+                    <h1 className="text-3xl font-bold mb-2">{parse(news.title)}</h1>
 
-                {/* 이미지 */}
-                {news.imageUrl && (
-                  <div className="mb-8 flex justify-center">
-                    <img 
-                      src={news.imageUrl} 
-                      alt={news.title}
-                      className="max-w-full h-auto rounded-lg shadow-md"
-                    />
-                  </div>
-                )}
-
-                {/* 본문 */}
-                <div className="space-y-6">
-                  <div className="prose prose-lg max-w-none">
-                    {parseContent(news.content)}
-                  </div>
-                </div>
-
-                {/* 원문 링크 */}
-                {news.originLink && (
-                  <div className="flex justify-end mt-8">
-                    <a 
-                      href={news.originLink} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-[#0E74F9] hover:underline flex items-center gap-1"
+                    {/* 채팅 참여자 수 */}
+                    <div 
+                      className="mb-4 py-2 px-4 bg-blue-50 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors"
+                      onClick={scrollToChatRoom}
                     >
-                      원문 보기
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
+                      <p className="text-[#0E74F9] font-medium flex items-center gap-2">
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                        </span>
+                        {userCount === 0 ? (
+                          <>지금 바로 채팅에 참여해보세요!</>
+                        ) : (
+                          <>현재 <span className="font-bold text-[#0E74F9]">{userCount}명</span>의 유저들이 채팅중이에요!</>
+                        )}
+                      </p>
+                    </div>
+
+                    {/* 날짜 및 요약보기 버튼 */}
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <p>{news.date}</p>
+                        <div className="flex items-center gap-1">
+                          <ViewCountIcon />
+                          <span>{news.viewCount.toLocaleString()}회</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsSummaryOpen(!isSummaryOpen)}
+                        className="px-4 py-2 bg-white text-[#0E74F9] border border-[#0E74F9] rounded-lg hover:bg-[#0E74F9] hover:text-white transition-colors flex items-center gap-2"
+                      >
+                        <SummaryIcon />
+                        {isSummaryOpen ? '요약접기' : '요약보기'}
+                      </button>
+                    </div>
                   </div>
-                )}
-              </article>
+
+                  {/* 뉴스 본문 영역 - 스크롤 가능 */}
+                  <div className="flex-1 overflow-y-auto px-6">
+                    {/* 요약 섹션 */}
+                    <div className={`mb-6 transition-all duration-300 ease-in-out ${isSummaryOpen ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                      <div className="pt-2">
+                        <h2 className="text-2xl font-bold mb-4 text-[#0E74F9]">뉴스 요약</h2>
+                        <div className="prose prose-lg">
+                          <p className="text-gray-700 leading-relaxed">{news.summary}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 이미지 */}
+                    {news.imageUrl && (
+                      <div className="mb-8 flex justify-center">
+                        <img 
+                          src={news.imageUrl} 
+                          alt={news.title}
+                          className="max-w-full h-auto rounded-lg shadow-md"
+                        />
+                      </div>
+                    )}
+
+                    {/* 본문 */}
+                    <div className="space-y-6">
+                      <div className="prose prose-lg max-w-none">
+                        {parseContent(news.content)}
+                      </div>
+                    </div>
+
+                    {/* 원문 링크 */}
+                    {news.originLink && (
+                      <div className="flex justify-end mt-8 mb-6">
+                        <a 
+                          href={news.originLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-[#0E74F9] hover:underline flex items-center gap-1"
+                        >
+                          원문 보기
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        {/* PC 버전 채팅방 */}
+        <div className="hidden md:block w-full max-w-5xl mx-auto px-8 pb-8">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden" ref={chatRoomRef}>
+            <button
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              className="w-full py-3 px-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            >
+              <span className="text-sm text-gray-500">현재 {userCount}명이 참여 중</span>
+              <div className="flex items-center gap-2 text-[#0E74F9]">
+                <span className="font-medium">채팅방 {isChatOpen ? '닫기' : '열기'}</span>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className={`h-5 w-5 transform transition-transform ${isChatOpen ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+            <div 
+              className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                isChatOpen ? 'h-[400px]' : 'h-0'
+              } bg-white`}
+            >
+              <div className="h-full pb-safe">
+                <ChatRoom articleId={params.id} />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 채팅방 영역 - 하단 고정 */}
-        <div className="border-t bg-white">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto">
-              <ChatRoom articleId={params.id} />
+        {/* 모바일 버전 */}
+        <main className="md:hidden w-full">
+          <div className="w-full max-w-[100vw] mx-auto">
+            <div className="bg-black rounded-[3rem] shadow-xl mx-2">
+              {/* 노치 디자인 */}
+              <div className="relative w-full h-7 mb-1">
+                <div className="absolute left-1/2 -translate-x-1/2 top-0 w-36 h-7 bg-black rounded-b-3xl flex items-center justify-center">
+                  <div className="w-20 h-4 bg-black rounded-lg relative flex items-center">
+                    <div className="absolute left-3 w-2 h-2 rounded-full bg-gray-800"></div>
+                    <div className="absolute right-3 w-2 h-2 rounded-full bg-gray-800"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 뉴스 컨테이너 - 카드 스타일 */}
+              <div className="bg-white rounded-[2rem] shadow-inner flex flex-col h-[calc(100vh-10rem)] overflow-hidden">
+                {/* 위와 동일한 내용 반복 */}
+                <div className="p-6 sm:p-4">
+                  {/* 카테고리 */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <span className="px-4 py-2 bg-gray-100 rounded-full text-base font-medium text-gray-700">
+                      {news.category}
+                    </span>
+                  </div>
+
+                  {/* 제목 */}
+                  <h1 className="text-2xl font-bold mb-2">{parse(news.title)}</h1>
+
+                  {/* 채팅 참여자 수 */}
+                  <div 
+                    className="mb-4 py-2 px-4 bg-blue-50 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors"
+                    onClick={scrollToChatRoom}
+                  >
+                    <p className="text-[#0E74F9] font-medium flex items-center gap-2 text-sm">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                      </span>
+                      {userCount === 0 ? (
+                        <>지금 바로 채팅에 참여해보세요!</>
+                      ) : (
+                        <>현재 <span className="font-bold text-[#0E74F9]">{userCount}명</span>의 유저들이 채팅중이에요!</>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* 날짜 및 요약보기 버튼 */}
+                  <div className="flex flex-wrap gap-4 justify-between items-center">
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <p>{news.date}</p>
+                      <div className="flex items-center gap-1">
+                        <ViewCountIcon />
+                        <span>{news.viewCount.toLocaleString()}회</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsSummaryOpen(!isSummaryOpen)}
+                      className="px-4 py-2 bg-white text-[#0E74F9] border border-[#0E74F9] rounded-lg hover:bg-[#0E74F9] hover:text-white transition-colors flex items-center gap-2 text-sm"
+                    >
+                      <SummaryIcon />
+                      {isSummaryOpen ? '요약접기' : '요약보기'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 뉴스 본문 영역 - 스크롤 가능 */}
+                <div className="flex-1 overflow-y-auto px-6 sm:px-4">
+                  {/* 요약 섹션 */}
+                  <div className={`mb-6 transition-all duration-300 ease-in-out ${isSummaryOpen ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                    <div className="pt-2">
+                      <h2 className="text-2xl font-bold mb-4 text-[#0E74F9]">뉴스 요약</h2>
+                      <div className="prose prose-lg">
+                        <p className="text-gray-700 leading-relaxed">{news.summary}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 이미지 */}
+                  {news.imageUrl && (
+                    <div className="mb-8 flex justify-center">
+                      <img 
+                        src={news.imageUrl} 
+                        alt={news.title}
+                        className="max-w-full h-auto rounded-lg shadow-md"
+                      />
+                    </div>
+                  )}
+
+                  {/* 본문 */}
+                  <div className="space-y-6">
+                    <div className="prose prose-lg max-w-none">
+                      {parseContent(news.content)}
+                    </div>
+                  </div>
+
+                  {/* 원문 링크 */}
+                  {news.originLink && (
+                    <div className="flex justify-end mt-8 mb-6">
+                      <a 
+                        href={news.originLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[#0E74F9] hover:underline flex items-center gap-1"
+                      >
+                        원문 보기
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* 채팅방 영역 */}
+                <div className="bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]" ref={chatRoomRef}>
+                  <button
+                    onClick={() => setIsChatOpen(!isChatOpen)}
+                    className="w-full py-3 px-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="text-sm text-gray-500">현재 {userCount}명이 참여 중</span>
+                    <div className="flex items-center gap-2 text-[#0E74F9]">
+                      <span className="font-medium">채팅방 {isChatOpen ? '닫기' : '열기'}</span>
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className={`h-5 w-5 transform transition-transform ${isChatOpen ? 'rotate-180' : ''}`} 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </button>
+                  <div 
+                    className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                      isChatOpen ? 'h-[300px]' : 'h-0'
+                    } bg-white`}
+                  >
+                    <div className="h-full pb-safe">
+                      <ChatRoom articleId={params.id} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 하단 홈 버튼 */}
+              <div className="mt-4 flex justify-center">
+                <div className="w-32 h-1 bg-gray-800 rounded-full"></div>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
 
       <Footer />
     </div>
