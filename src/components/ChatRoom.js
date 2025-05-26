@@ -94,7 +94,7 @@ function ChatRoom({ articleId, onError, isPcVersion }) {
     if (clientRef.current) {
       clientRef.current.send(`/app/chat.send`, {}, JSON.stringify({
         articleId,
-        sender: nickname,
+        sender: "SYSTEM",
         content: `${nickname}님이 퇴장하였습니다.`,
         timestamp: new Date().toISOString(),
         messageType: CHAT_MESSAGE_TYPE.LEAVE
