@@ -13,7 +13,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasNext, setHasNext] = useState(false);
-  const [lastIndex, setLastIndex] = useState(-1);
+  const [pageNumber, setPageNumber] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const PAGE_SIZE = 5;
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function HomePage() {
         setLoading(true);
       }
       
-      const data = await getLatestNews(lastIndex, PAGE_SIZE);
+      const data = await getLatestNews(pageNumber, PAGE_SIZE);
       setHasNext(data.data.hasNext);
       
       if (isLoadMore) {
@@ -35,7 +35,7 @@ export default function HomePage() {
         setNews(data.data.items);
       }
       
-      setLastIndex(prev => prev === -1 ? PAGE_SIZE : prev + PAGE_SIZE);
+      setPageNumber(prev => prev + 1);
     } catch (err) {
       setError(err.message);
     } finally {

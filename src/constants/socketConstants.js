@@ -3,14 +3,6 @@ export const SOCKET_CONNECTION_TYPE = {
   PUBLIC: 'PUBLIC'
 };
 
-export const SOCKET_EVENTS = {
-  CONNECT: 'CONNECT',
-  DISCONNECT: 'DISCONNECT',
-  MESSAGE: 'MESSAGE',
-  ERROR: 'ERROR',
-  RECONNECT: 'RECONNECT'
-};
-
 export const CHAT_MESSAGE_TYPE = {
   CHAT: 'CHAT',
   JOIN: 'JOIN',
@@ -19,7 +11,5 @@ export const CHAT_MESSAGE_TYPE = {
 };
 
 export const SOCKET_CONFIG = {
-  RECONNECT_DELAY: 5000,
-  CONNECT_TIMEOUT: 10000,
   ENDPOINT: '/api/ws-chat'
 }; 

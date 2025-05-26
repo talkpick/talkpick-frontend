@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { authSocketService, CHAT_MESSAGE_TYPE } from '@/lib/socket';
+import { CHAT_MESSAGE_TYPE } from '@/constants/socketConstants';
 import { AuthContext } from '@/contexts/AuthContext';
 import { formatDate } from '@/lib/utils';
+import { Stomp } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 /**
  * ChatRoom 컴포넌트
@@ -11,22 +13,41 @@ import { formatDate } from '@/lib/utils';
  * - 버튼 클릭 시 WebSocket 연결 후 채팅방 표시
  * - 퇴장 버튼으로 연결 해제
  */
-function ChatRoom({ articleId }) {
+function ChatRoom({ articleId, onError, isPcVersion }) {
   const [visible, setVisible] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const { nickname } = useContext(AuthContext);
+  const clientRef = useRef(null);
+  const chatContainerRef = useRef(null);
   
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isPcVersion) {
+      // PC 버전에서는 채팅 컨테이너가 가득 찼을 때만 스크롤
+      const container = chatContainerRef.current;
+      if (container) {
+        const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 150;
+        if (isScrolledToBottom) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+    } else {
+      // 모바일 버전에서는 기존처럼 페이지 스크롤
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const send = () => {
-    if (input.trim()) {
-      authSocketService.sendMessage(articleId, input.trim(), CHAT_MESSAGE_TYPE.CHAT);
-      setInput('');
-    }
+    if (!input.trim() || !clientRef.current) return;
+    clientRef.current.send(`/app/chat.send`, {}, JSON.stringify({
+      articleId,
+      sender: nickname,
+      content: input.trim(),
+      timestamp: new Date().toISOString(),
+      messageType: CHAT_MESSAGE_TYPE.CHAT
+    }));
+    setInput('');
   };
 
   // 메시지 수신 콜백
@@ -37,42 +58,62 @@ function ChatRoom({ articleId }) {
 
   // 채팅방 열기
   const openChat = async () => {
-    try {
-      await authSocketService.connectWithAuth(articleId, nickname, onMessage);
+    if (clientRef.current) {
+      return;
+    }
+    const socket = new SockJS('/api/ws-chat');
+    const stompClient = Stomp.over(socket);
+    stompClient.connect({ Authorization: `Bearer ${localStorage.getItem('accessToken')}` }, () => {
+      clientRef.current = stompClient;
       setVisible(true);
       setMessages([]);
-      console.log("채팅방 연결 성공");
-    } catch (error) {
+      stompClient.subscribe(`/topic/chat.${articleId}`, ({ body }) => {
+        try {
+          onMessage(JSON.parse(body));
+        } catch (error) {
+          console.error("메시지 파싱 오류:", error);
+        }
+      });
+
+      // 연결 직후 입장 메시지 전송
+      clientRef.current.send(`/app/chat.send`, {}, JSON.stringify({
+        articleId,
+        sender: "SYSTEM",
+        content: `${nickname}님이 입장하였습니다.`,
+        timestamp: new Date().toISOString(),
+        messageType: CHAT_MESSAGE_TYPE.JOIN
+      }));
+    }, (error) => {
       console.error("채팅방 연결 실패:", error);
-    }
+      onError(error);
+    });
   };
 
   // 채팅방 나가기
   const leaveChat = () => {
-    authSocketService.disconnectFromRoom(articleId);
+    if (clientRef.current) {
+      clientRef.current.send(`/app/chat.send`, {}, JSON.stringify({
+        articleId,
+        sender: nickname,
+        content: `${nickname}님이 퇴장하였습니다.`,
+        timestamp: new Date().toISOString(),
+        messageType: CHAT_MESSAGE_TYPE.LEAVE
+      }));
+      clientRef.current.disconnect();
+      clientRef.current = null;
+    }
     setVisible(false);
     setMessages([]);
   };
 
-  // 언마운트 시 정리
+
+  // 채팅방 연결관리
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (visible) {
-        authSocketService.disconnectFromRoom(articleId);
-      }
-    };
-
-    // beforeunload 이벤트 리스너 등록
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
     return () => {
-      // 컴포넌트 언마운트 시 이벤트 리스너 제거 및 연결 해제
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      if (visible) {
-        authSocketService.disconnectFromRoom(articleId);
-      }
+      // 연결 해제
+      if (clientRef.current) clientRef.current.disconnect();
     };
-  }, [articleId, visible]);
+  }, []);
 
   // 새 메시지 자동 스크롤
   useEffect(() => {
@@ -96,7 +137,7 @@ function ChatRoom({ articleId }) {
           >
             채팅방 나가기
           </button>
-          <div className="flex-1 min-h-0 overflow-y-auto bg-gray-50 rounded-lg">
+          <div className="flex-1 min-h-0 overflow-y-auto bg-gray-50 rounded-lg" ref={chatContainerRef}>
             <div className="p-4 space-y-2">
               {messages.map((msg, idx) => (
                 <div
@@ -135,7 +176,7 @@ function ChatRoom({ articleId }) {
               <div ref={messagesEndRef} />
             </div>
           </div>
-          <div className="flex gap-2 p-2 bg-white border-t sticky bottom-0 left-0 right-0">
+          <div className="flex gap-2 p-2 bg-white border-t">
             <input
               type="text"
               value={input}
