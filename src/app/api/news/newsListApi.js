@@ -1,7 +1,7 @@
 import instance from '@/lib/axios';
 
-export async function getLatestNews(lastIndex, size) {
-  const response = await instance.get(`/api/public/news/latest?last=${lastIndex}&size=${size}`);
+export async function getLatestNews(page, size) {
+  const response = await instance.get(`/api/public/news/latest?page=${page}&size=${size}`);
   return response.data;
 }
 

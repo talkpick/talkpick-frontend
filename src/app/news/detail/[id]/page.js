@@ -1,12 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import parse from 'html-react-parser';
 import { getCategoryId } from '@/constants/categories';
 import { getNewsDetail } from '@/app/api/news/detail/[id]/newsDetailApi';
+import ChatRoom from '@/components/ChatRoom';
+import ViewCountIcon from '@/components/icons/ViewCountIcon';
+import SummaryIcon from '@/components/icons/SummaryIcon';
+import { Stomp } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+import { SOCKET_CONFIG, SOCKET_CONNECTION_TYPE } from '@/constants/socketConstants';
+
 
 // 이미지 URL에서 사이즈 정보 제거하는 함수
 const removeImageSize = (url) => {
@@ -22,6 +29,17 @@ const NewsDetailPage = () => {
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [userCount, setUserCount] = useState(0);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const chatRoomRef = useRef(null);
+  const [showErrorToast, setShowErrorToast] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const socketRef = useRef(null);
+  
+
+  const scrollToChatRoom = () => {
+    chatRoomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const fetchNewsDetail = async () => {
     setIsLoading(true);
@@ -45,7 +63,8 @@ const NewsDetailPage = () => {
           hour: '2-digit',
           minute: '2-digit'
         }),
-        originLink: data.originLink
+        originLink: data.originLink,
+        viewCount: data.viewCount
       };
       
       setNews(newsData);
@@ -59,8 +78,57 @@ const NewsDetailPage = () => {
   };
 
   useEffect(() => {
+    if(!params.id) return;
     fetchNewsDetail();
   }, [params.id]);
+
+  useEffect(() => {
+    if (!params.id) return;
+    if (socketRef.current) return;
+    // SockJS + STOMP 클라이언트 생성
+    const socket = new SockJS(SOCKET_CONFIG.ENDPOINT);
+    const client = Stomp.over(socket);
+
+    client.connect({type: SOCKET_CONNECTION_TYPE.PUBLIC}, () => {
+      // 인원 수 토픽 구독
+      client.subscribe(`/topic/chat.${params.id}.count`, ({ body }) => {
+        const { count } = JSON.parse(body);
+        setUserCount(count);
+      });
+    }, console.error);
+
+    socketRef.current = client;
+
+    return () => {
+      // cleanup: 모든 구독 해제하고 연결 종료
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [params.id]);
+
+  // 채팅 에러 핸들러 추가
+  const handleChatError = (error) => {
+    // if (error.code === 'AUTH_REQUIRED') {
+    //   setErrorMessage('로그인이 필요한 서비스입니다.');
+    //   setShowErrorToast(true);
+    //   setIsChatOpen(false);
+      
+    //   // 3초 후 토스트 메시지 숨기기
+    //   setTimeout(() => {
+    //     setShowErrorToast(false);
+    //   }, 3000);
+    // }
+    setErrorMessage('채팅 서비스 연결에 실패했습니다.');
+      setShowErrorToast(true);
+      setIsChatOpen(false);
+      
+      // 3초 후 토스트 메시지 숨기기
+      setTimeout(() => {
+        setShowErrorToast(false);
+      }, 3000);
+  };
 
   // content를 문단별로 나누는 함수
   const parseContent = (content) => {
@@ -139,98 +207,300 @@ const NewsDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-100">
       <Header />
       
-      {/* <CategorySection 
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-      /> */}
+      {/* 에러 토스트 */}
+      <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 bg-white text-black-500 border border-red-500 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${showErrorToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} flex items-center`}>
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="#ef4444" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        {errorMessage}
+      </div>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <article className="prose lg:prose-xl mx-auto">
-            {/* 카테고리 및 날짜 */}
-            <div className="flex items-center gap-4 mb-4">
-              <span className="px-4 py-2 bg-gray-100 rounded-full text-base font-medium text-gray-700">
-                {news.category}
-              </span>
-            </div>
+      <div className="flex flex-col items-center">
+        {/* PC 버전 */}
+        <main className="hidden md:block w-full">
+          <div className="max-w-[1440px] mx-auto p-8">
+            <div className="flex gap-8">
+              {/* 뉴스 본문 영역 */}
+              <div className="flex-1 bg-white rounded-2xl shadow-lg p-8">
+                {/* 뉴스 헤더 영역 */}
+                <div className="mb-8">
+                  {/* 카테고리 */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <span className="px-4 py-2 bg-gray-100 rounded-full text-base font-medium text-gray-700">
+                      {news.category}
+                    </span>
+                  </div>
 
-            {/* 제목 */}
-            <h1 className="text-3xl font-bold mb-2">{parse(news.title)}</h1>
-            
-            {/* 날짜 및 요약보기 버튼 */}
-            <div className="flex justify-between items-center mb-6">
-              <p className="text-sm text-gray-500">{news.date}</p>
-              <button
-                onClick={() => setIsSummaryOpen(true)}
-                className="px-4 py-2 bg-white text-[#0E74F9] border border-[#0E74F9] rounded-lg hover:bg-[#0E74F9] hover:text-white transition-colors flex items-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                </svg>
-                요약보기
-              </button>
-            </div>
+                  {/* 제목 */}
+                  <h1 className="text-3xl font-bold mb-4">{parse(news.title)}</h1>
 
-            {/* 이미지 */}
-            {news.imageUrl && (
-              <div className="mb-8 flex justify-center">
-                <img 
-                  src={news.imageUrl} 
-                  alt={news.title}
-                  className="max-w-full h-auto rounded-lg shadow-md"
-                />
+                  {/* 날짜 및 요약보기 버튼 */}
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <p>{news.date}</p>
+                      <div className="flex items-center gap-1">
+                        <ViewCountIcon />
+                        <span>{news.viewCount.toLocaleString()}회</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsSummaryOpen(!isSummaryOpen)}
+                      className="px-4 py-2 bg-white text-[#0E74F9] border border-[#0E74F9] rounded-lg hover:bg-[#0E74F9] hover:text-white transition-colors flex items-center gap-2"
+                    >
+                      <SummaryIcon />
+                      {isSummaryOpen ? '요약접기' : '요약보기'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 요약 섹션 */}
+                <div className={`mb-8 transition-all duration-300 ease-in-out ${isSummaryOpen ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                  <div className="pt-2">
+                    <h2 className="text-2xl font-bold mb-4 text-[#0E74F9]">뉴스 요약</h2>
+                    <div className="prose prose-lg">
+                      <p className="text-gray-700 leading-relaxed">{news.summary}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 이미지 */}
+                {news.imageUrl && (
+                  <div className="mb-8 flex justify-center">
+                    <img 
+                      src={news.imageUrl} 
+                      alt={news.title}
+                      className="max-w-full h-auto rounded-lg shadow-md"
+                    />
+                  </div>
+                )}
+
+                {/* 본문 */}
+                <div className="space-y-6">
+                  <div className="prose prose-lg max-w-none">
+                    {parseContent(news.content)}
+                  </div>
+                </div>
+
+                {/* 원문 링크 */}
+                {news.originLink && (
+                  <div className="flex justify-end mt-8">
+                    <a 
+                      href={news.originLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-[#0E74F9] hover:underline flex items-center gap-1"
+                    >
+                      원문 보기
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                )}
               </div>
-            )}
 
-            {/* 본문 */}
-            <div className="space-y-6">
-              <div className="prose prose-lg max-w-none">
-                {parseContent(news.content)}
+              {/* PC 버전 채팅방 - 우측 고정 */}
+              <div className="w-[400px]">
+                <div className="sticky top-8">
+                  <div className="bg-black rounded-[3rem] shadow-xl overflow-hidden">
+                    {/* 노치 디자인 */}
+                    <div className="relative w-full h-7 mb-1">
+                      <div className="absolute left-1/2 -translate-x-1/2 top-0 w-36 h-7 bg-black rounded-b-3xl flex items-center justify-center">
+                        <div className="w-20 h-4 bg-black rounded-lg relative flex items-center">
+                          <div className="absolute left-3 w-2 h-2 rounded-full bg-gray-800"></div>
+                          <div className="absolute right-3 w-2 h-2 rounded-full bg-gray-800"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 채팅방 컨테이너 */}
+                    <div className="bg-white rounded-[2rem] shadow-inner flex flex-col h-[calc(100vh-200px)] overflow-hidden">
+                      <div className="p-4 border-b border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-gray-900">실시간 채팅</p>
+                          <div className="flex items-center gap-2">
+                            <span className="relative flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                            </span>
+                            <span className="text-sm text-gray-500">
+                              {userCount}명 참여중
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        <ChatRoom articleId={params.id} onError={handleChatError} isPcVersion={true} />
+                      </div>
+                    </div>
+
+                    {/* 하단 홈 버튼 */}
+                    <div className="mt-4 mb-4 flex justify-center">
+                      <div className="w-32 h-1 bg-gray-800 rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            {/* 원문 링크 */}
-            {news.originLink && (
-              <div className="flex justify-end mt-8">
-                <a 
-                  href={news.originLink} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-[#0E74F9] hover:underline flex items-center gap-1"
-                >
-                  원문 보기
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </div>
-            )}
-          </article>
-        </div>
-      </main>
-
-      {/* 요약 팝업 */}
-      {isSummaryOpen && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white/95 rounded-lg p-6 max-w-2xl w-full mx-4 relative shadow-xl">
-            <button
-              onClick={() => setIsSummaryOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <h2 className="text-2xl font-bold mb-4 text-[#0E74F9]">요약</h2>
-            <div className="prose prose-lg">
-              <p className="text-gray-700 leading-relaxed">{news.summary}</p>
             </div>
           </div>
-        </div>
-      )}
+        </main>
+
+        {/* 모바일 버전 */}
+        <main className="md:hidden w-full">
+          <div className="w-full max-w-[100vw] mx-auto">
+            <div className="bg-black rounded-[3rem] shadow-xl mx-2">
+              {/* 노치 디자인 */}
+              <div className="relative w-full h-7 mb-1">
+                <div className="absolute left-1/2 -translate-x-1/2 top-0 w-36 h-7 bg-black rounded-b-3xl flex items-center justify-center">
+                  <div className="w-20 h-4 bg-black rounded-lg relative flex items-center">
+                    <div className="absolute left-3 w-2 h-2 rounded-full bg-gray-800"></div>
+                    <div className="absolute right-3 w-2 h-2 rounded-full bg-gray-800"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 뉴스 컨테이너 - 카드 스타일 */}
+              <div className="bg-white rounded-[2rem] shadow-inner flex flex-col h-[calc(100vh-10rem)] overflow-hidden">
+                {/* 위와 동일한 내용 반복 */}
+                <div className="p-6 sm:p-4">
+                  {/* 카테고리 */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <span className="px-4 py-2 bg-gray-100 rounded-full text-base font-medium text-gray-700">
+                      {news.category}
+                    </span>
+                  </div>
+
+                  {/* 제목 */}
+                  <h1 className="text-2xl font-bold mb-2">{parse(news.title)}</h1>
+
+                  {/* 채팅 참여자 수 */}
+                  <div 
+                    className="mb-4 py-2 px-4 bg-blue-50 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors"
+                    onClick={scrollToChatRoom}
+                  >
+                    <p className="text-[#0E74F9] font-medium flex items-center gap-2 text-sm">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                      </span>
+                      {userCount === 0 ? (
+                        <>지금 바로 채팅에 참여해보세요!</>
+                      ) : (
+                        <>현재 <span className="font-bold text-[#0E74F9]">{userCount}명</span>의 유저들이 채팅중이에요!</>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* 날짜 및 요약보기 버튼 */}
+                  <div className="flex flex-wrap gap-4 justify-between items-center">
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <p>{news.date}</p>
+                      <div className="flex items-center gap-1">
+                        <ViewCountIcon />
+                        <span>{news.viewCount.toLocaleString()}회</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsSummaryOpen(!isSummaryOpen)}
+                      className="px-4 py-2 bg-white text-[#0E74F9] border border-[#0E74F9] rounded-lg hover:bg-[#0E74F9] hover:text-white transition-colors flex items-center gap-2 text-sm"
+                    >
+                      <SummaryIcon />
+                      {isSummaryOpen ? '요약접기' : '요약보기'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 뉴스 본문 영역 - 스크롤 가능 */}
+                <div className="flex-1 overflow-y-auto px-6 sm:px-4">
+                  {/* 요약 섹션 */}
+                  <div className={`mb-6 transition-all duration-300 ease-in-out ${isSummaryOpen ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                    <div className="pt-2">
+                      <h2 className="text-2xl font-bold mb-4 text-[#0E74F9]">뉴스 요약</h2>
+                      <div className="prose prose-lg">
+                        <p className="text-gray-700 leading-relaxed">{news.summary}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 이미지 */}
+                  {news.imageUrl && (
+                    <div className="mb-8 flex justify-center">
+                      <img 
+                        src={news.imageUrl} 
+                        alt={news.title}
+                        className="max-w-full h-auto rounded-lg shadow-md"
+                      />
+                    </div>
+                  )}
+
+                  {/* 본문 */}
+                  <div className="space-y-6">
+                    <div className="prose prose-lg max-w-none">
+                      {parseContent(news.content)}
+                    </div>
+                  </div>
+
+                  {/* 원문 링크 */}
+                  {news.originLink && (
+                    <div className="flex justify-end mt-8 mb-6">
+                      <a 
+                        href={news.originLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[#0E74F9] hover:underline flex items-center gap-1"
+                      >
+                        원문 보기
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* 채팅방 영역 */}
+                <div className="bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]" ref={chatRoomRef}>
+                  <button
+                    onClick={() => setIsChatOpen(!isChatOpen)}
+                    className="w-full py-3 px-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="text-sm text-gray-500">현재 {userCount}명이 참여 중</span>
+                    <div className="flex items-center gap-2 text-[#0E74F9]">
+                      <span className="font-medium">채팅방 {isChatOpen ? '닫기' : '열기'}</span>
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className={`h-5 w-5 transform transition-transform ${isChatOpen ? 'rotate-180' : ''}`} 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </button>
+                  <div 
+                    className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                      isChatOpen ? 'h-[300px]' : 'h-0'
+                    } bg-white`}
+                  >
+                    <div className="h-full pb-safe">
+                      <ChatRoom articleId={params.id} onError={handleChatError} isPcVersion={false} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 하단 홈 버튼 */}
+              <div className="mt-4 flex justify-center">
+                <div className="w-32 h-1 bg-gray-800 rounded-full"></div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
 
       <Footer />
     </div>
