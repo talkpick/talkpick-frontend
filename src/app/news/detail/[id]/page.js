@@ -305,23 +305,41 @@ const NewsDetailPage = () => {
               {/* PC 버전 채팅방 - 우측 고정 */}
               <div className="w-[400px]">
                 <div className="sticky top-8">
-                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                    <div className="p-4 border-b border-gray-100">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium text-gray-900">실시간 채팅</p>
-                        <div className="flex items-center gap-2">
-                          <span className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                          </span>
-                          <span className="text-sm text-gray-500">
-                            {userCount}명 참여중
-                          </span>
+                  <div className="bg-black rounded-[3rem] shadow-xl overflow-hidden">
+                    {/* 노치 디자인 */}
+                    <div className="relative w-full h-7 mb-1">
+                      <div className="absolute left-1/2 -translate-x-1/2 top-0 w-36 h-7 bg-black rounded-b-3xl flex items-center justify-center">
+                        <div className="w-20 h-4 bg-black rounded-lg relative flex items-center">
+                          <div className="absolute left-3 w-2 h-2 rounded-full bg-gray-800"></div>
+                          <div className="absolute right-3 w-2 h-2 rounded-full bg-gray-800"></div>
                         </div>
                       </div>
                     </div>
-                    <div className="h-[calc(100vh-200px)]">
-                      <ChatRoom articleId={params.id} onError={handleChatError} isPcVersion={true} />
+
+                    {/* 채팅방 컨테이너 */}
+                    <div className="bg-white rounded-[2rem] shadow-inner flex flex-col h-[calc(100vh-200px)] overflow-hidden">
+                      <div className="p-4 border-b border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-gray-900">실시간 채팅</p>
+                          <div className="flex items-center gap-2">
+                            <span className="relative flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                            </span>
+                            <span className="text-sm text-gray-500">
+                              {userCount}명 참여중
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        <ChatRoom articleId={params.id} onError={handleChatError} isPcVersion={true} />
+                      </div>
+                    </div>
+
+                    {/* 하단 홈 버튼 */}
+                    <div className="mt-4 mb-4 flex justify-center">
+                      <div className="w-32 h-1 bg-gray-800 rounded-full"></div>
                     </div>
                   </div>
                 </div>
