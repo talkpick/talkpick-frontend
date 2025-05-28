@@ -42,6 +42,9 @@ const PasswordRecoveryPage = () => {
     code: '',
     password: '',
     passwordConfirm: '',
+    emailLocal: '',
+    emailDomain: 'naver.com',
+    customEmailDomain: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -93,10 +96,40 @@ const PasswordRecoveryPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    if (name === 'emailLocal') {
+      const domain = formData.emailDomain === '' ? formData.customEmailDomain : formData.emailDomain;
+      setFormData(prev => ({
+        ...prev,
+        emailLocal: value,
+        email: domain ? `${value}@${domain}` : '',
+      }));
+    } else if (name === 'emailDomain') {
+      if (value === '') {
+        setFormData(prev => ({
+          ...prev,
+          emailDomain: '',
+          email: formData.customEmailDomain ? `${formData.emailLocal}@${formData.customEmailDomain}` : '',
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          emailDomain: value,
+          customEmailDomain: '',
+          email: formData.emailLocal ? `${formData.emailLocal}@${value}` : '',
+        }));
+      }
+    } else if (name === 'customEmailDomain') {
+      setFormData(prev => ({
+        ...prev,
+        customEmailDomain: value,
+        email: formData.emailLocal ? `${formData.emailLocal}@${value}` : '',
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSendCode = async (e) => {
@@ -220,18 +253,42 @@ const PasswordRecoveryPage = () => {
 
               <div className="mb-4">
                 <label className="block text-sm text-gray-700 mb-2">이메일</label>
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="이메일"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="bg-gray-100 text-gray-900 border-0 rounded-md p-2 w-full
-                    focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
-                    transition ease-in-out duration-150"
-                  required
-                  disabled={isLoading}
-                />
+                <div className="flex flex-1 flex-wrap gap-2">
+                  <input
+                    name="emailLocal"
+                    type="text"
+                    placeholder="이메일"
+                    value={formData.emailLocal}
+                    onChange={handleChange}
+                    className="bg-gray-100 text-gray-900 border-0 rounded-md p-2 h-10 flex-1 focus:outline-none focus:ring-1 focus:ring-[#0D6EFD] transition ease-in-out duration-150"
+                    disabled={isLoading}
+                  />
+                  <span className="flex items-center text-gray-500">@</span>
+                  <select
+                    name="emailDomain"
+                    value={formData.emailDomain}
+                    onChange={handleChange}
+                    className="bg-gray-100 text-gray-900 border-0 rounded-md p-2 h-10 flex-none focus:outline-none focus:ring-1 focus:ring-[#0D6EFD] transition ease-in-out duration-150"
+                    disabled={isLoading}
+                  >
+                    <option value="naver.com">naver.com</option>
+                    <option value="gmail.com">gmail.com</option>
+                    <option value="daum.net">daum.net</option>
+                    <option value="hanmail.net">hanmail.net</option>
+                    <option value="nate.com">nate.com</option>
+                    <option value="kakao.com">kakao.com</option>
+                    <option value="">직접입력</option>
+                  </select>
+                  <input
+                    name="customEmailDomain"
+                    type="text"
+                    placeholder="도메인 입력 (예: gmail.com)"
+                    value={formData.emailDomain === '' ? formData.customEmailDomain : ''}
+                    onChange={handleChange}
+                    className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 h-10 flex-1 focus:outline-none focus:ring-1 focus:ring-[#0D6EFD] transition ease-in-out duration-150 ${formData.emailDomain !== '' ? 'hidden' : ''}`}
+                    disabled={isLoading || formData.emailDomain !== ''}
+                  />
+                </div>
               </div>
 
               <div className="mb-4">

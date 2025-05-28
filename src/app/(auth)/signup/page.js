@@ -19,7 +19,10 @@ const SignupForm = () => {
     birthDay: '',
     gender: '',
     email: '',
-    emailCode: ''
+    emailLocal: '',
+    emailDomain: 'naver.com',
+    emailCode: '',
+    customEmailDomain: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -99,10 +102,40 @@ const SignupForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    if (name === 'emailLocal') {
+      const domain = formData.emailDomain === '' ? formData.customEmailDomain : formData.emailDomain;
+      setFormData(prev => ({
+        ...prev,
+        emailLocal: value,
+        email: domain ? `${value}@${domain}` : '',
+      }));
+    } else if (name === 'emailDomain') {
+      if (value === '') {
+        setFormData(prev => ({
+          ...prev,
+          emailDomain: '',
+          email: formData.customEmailDomain ? `${formData.emailLocal}@${formData.customEmailDomain}` : '',
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          emailDomain: value,
+          customEmailDomain: '', // clear custom domain
+          email: formData.emailLocal ? `${formData.emailLocal}@${value}` : '',
+        }));
+      }
+    } else if (name === 'customEmailDomain') {
+      setFormData(prev => ({
+        ...prev,
+        customEmailDomain: value,
+        email: formData.emailLocal ? `${formData.emailLocal}@${value}` : '',
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
 
     // 실시간 유효성 검사
     const error = validateField(name, value);
@@ -514,30 +547,67 @@ const SignupForm = () => {
 
             <div className="mb-4">
               <label className="block text-sm text-gray-700 mb-2">이메일</label>
-              <div className="flex space-x-2">
+              <div className="flex flex-1 flex-wrap gap-2">
                 <input
-                  name="email"
-                  type="email"
+                  name="emailLocal"
+                  type="text"
                   placeholder="이메일"
-                  value={formData.email}
+                  value={formData.emailLocal}
                   onChange={handleChange}
-                  className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 flex-1
-                    focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
-                    transition ease-in-out duration-150
-                    ${errors.email ? 'border-red-500' : ''}`}
+                  className={`${styles.inputBase} ${styles.flexInput} ${errors.email ? styles.errorBorder : ''}`}
                   disabled={isLoading || emailVerified}
                 />
+                <span className="flex items-center text-gray-500">@</span>
+                <select
+                  name="emailDomain"
+                  value={formData.emailDomain}
+                  onChange={handleChange}
+                  className={`${styles.inputBase} ${styles.flexNone} ${errors.email ? styles.errorBorder : ''}`}
+                  disabled={isLoading || emailVerified}
+                >
+                  <option value="naver.com">naver.com</option>
+                  <option value="gmail.com">gmail.com</option>
+                  <option value="daum.net">daum.net</option>
+                  <option value="hanmail.net">hanmail.net</option>
+                  <option value="nate.com">nate.com</option>
+                  <option value="kakao.com">kakao.com</option>
+                  <option value="">직접입력</option>
+                </select>
                 <button
                   type="button"
                   onClick={() => handleCheckDuplicate('email')}
-                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md
-                    hover:bg-gray-300 transition ease-in-out duration-150
-                    disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`${styles.button}`}
                   disabled={isLoading || emailVerified || !formData.email}
                 >
                   {emailVerified ? '인증완료' : '인증하기'}
                 </button>
               </div>
+              {formData.emailDomain === '' && (
+                <div className="mt-2">
+                  <input
+                    name="customEmailDomain"
+                    type="text"
+                    placeholder="도메인 입력 (예: gmail.com)"
+                    value={formData.customEmailDomain}
+                    onChange={e => {
+                      const newDomain = e.target.value;
+                      const newEmail = newDomain ? `${formData.emailLocal}@${newDomain}` : '';
+                      setFormData(prev => ({
+                        ...prev,
+                        emailDomain: '',
+                        customEmailDomain: newDomain,
+                        email: newEmail
+                      }));
+                      setErrors(prev => ({
+                        ...prev,
+                        email: newDomain ? validateEmail(newEmail) : null
+                      }));
+                    }}
+                    className={`${styles.inputBase} ${styles.flexInput} ${errors.email ? styles.errorBorder : ''}`}
+                    disabled={isLoading || emailVerified}
+                  />
+                </div>
+              )}
               <div className="h-5 mt-1">
                 {errors.email && (
                   <p className="text-sm text-red-500">{errors.email}</p>
@@ -614,5 +684,14 @@ const SignupForm = () => {
     </div>
   );
 };
+
+const styles = {
+  inputBase: "bg-gray-100 text-gray-900 border-0 rounded-md p-2 h-10 min-w-0 focus:outline-none focus:ring-1 focus:ring-[#0D6EFD] transition ease-in-out duration-150",
+  flexInput: "flex-1",
+  flexNone: "flex-none",
+  errorBorder: "border-red-500",
+  button: "bg-[#0E74F9] text-white font-bold px-3 rounded-md h-10 flex-none hover:bg-[#0D6EFD] transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed",
+};
+
 
 export default SignupForm; 
