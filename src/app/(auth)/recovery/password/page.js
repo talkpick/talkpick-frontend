@@ -197,6 +197,7 @@ const PasswordRecoveryPage = () => {
 
     try {
       await resetPassword(formData.email, tempToken, formData.password);
+      setStep(4);
       setShowToast(true);
       setTimeout(() => {
         setShowToast(false);
@@ -220,7 +221,7 @@ const PasswordRecoveryPage = () => {
         {step === 1 ? '비밀번호 재설정 이메일이 전송되었습니다.' : 
          step === 2 ? '인증 코드가 전송되었습니다. 3분 내로 인증코드를 입력해주세요. 스팸 메시지함도 확인해주세요.' : 
          step === 3 ? '인증 코드가 확인되었습니다. 새 비밀번호를 입력해주세요.' :
-         '비밀번호가 재설정되었습니다. 로그인 페이지로 이동합니다.'}
+         step === 4 ? '비밀번호가 재설정되었습니다. 로그인 페이지로 이동합니다.' : ''}
       </div>
 
       <main className="flex flex-col items-center justify-center flex-1 px-6">
