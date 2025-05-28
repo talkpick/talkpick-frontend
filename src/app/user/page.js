@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import instance from '@/lib/axios';
 import { checkDuplicateEmail, checkDuplicateNickname, verifyEmailCode } from '@/app/api/auth/auth';
 import { validateName, validateNickname, validateEmail, validateGender } from '../(auth)/signup/signUpValidator';
+import { useRouter } from 'next/navigation';
 
 const styles = {
   inputBase: "bg-gray-100 text-gray-900 border-0 rounded-md p-2 h-10 min-w-0 focus:outline-none focus:ring-1 focus:ring-[#0D6EFD] transition ease-in-out duration-150",
@@ -16,6 +17,7 @@ const styles = {
 };
 
 const ProfilePage = () => {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
     nickName: '',
@@ -38,6 +40,8 @@ const ProfilePage = () => {
   const [emailVerified, setEmailVerified] = useState(true);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [timeLeft, setTimeLeft] = useState(180);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let timer;
@@ -259,6 +263,27 @@ const ProfilePage = () => {
     setDuplicateChecks({ email: true, nickName: true });
   };
 
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('정말로 탈퇴하시겠습니까? 탈퇴한 계정은 복구할 수 없습니다.')) {
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      await instance.delete('/api/user/delete');
+      // 로컬 스토리지에서 토큰 삭제
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      alert('회원 탈퇴가 완료되었습니다.');
+      router.push('/login');
+    } catch (error) {
+      setErrors(prev => ({ ...prev, submit: error.message || '회원 탈퇴에 실패했습니다.' }));
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -297,18 +322,27 @@ const ProfilePage = () => {
                 <div className="text-sm text-gray-700 mb-1">이메일</div>
                 <div className="font-medium text-gray-900 bg-gray-50 rounded-md p-2">{formData.email}</div>
               </div>
-              <button
-                type="button"
-                className="bg-[#0E74F9] text-white font-bold py-2 px-4 rounded-md mt-4 hover:bg-[#0D6EFD] transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed w-full"
-                onClick={() => {
-                  setEditMode(true);
-                  setDuplicateChecks({ email: false, nickName: false });
-                  setEmailVerified(false);
-                  setShowEmailVerification(false);
-                }}
-              >
-                프로필 수정
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="bg-[#0E74F9] text-white font-bold py-2 px-4 rounded-md hover:bg-[#0D6EFD] transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex-1"
+                  onClick={() => {
+                    setEditMode(true);
+                    setDuplicateChecks({ email: false, nickName: false });
+                    setEmailVerified(false);
+                    setShowEmailVerification(false);
+                  }}
+                >
+                  프로필 수정
+                </button>
+                <button
+                  type="button"
+                  className="bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-600 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex-1"
+                  onClick={() => setShowDeleteModal(true)}
+                >
+                  회원 탈퇴
+                </button>
+              </div>
             </div>
           ) : (
             <form className="flex flex-col" onSubmit={handleSubmit}>
@@ -519,6 +553,35 @@ const ProfilePage = () => {
           )}
         </div>
       </main>
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">회원 탈퇴</h3>
+            <p className="text-gray-700 mb-6">
+              정말로 탈퇴하시겠습니까?<br />
+              탈퇴한 계정은 복구할 수 없으며, 모든 데이터는 30일 보관 후 삭제됩니다.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-md hover:bg-gray-300 transition ease-in-out duration-150 flex-1"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-600 transition ease-in-out duration-150 flex-1"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+              >
+                {isDeleting ? '처리 중...' : '탈퇴하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <Footer />
     </div>
   );
