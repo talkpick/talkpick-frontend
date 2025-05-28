@@ -14,7 +14,7 @@ const instance = axios.create({
 });
 
 // 토큰 갱신을 위한 순수 axios 인스턴스
-const refreshAxios = axios.create({
+export const refreshAxios = axios.create({
   ...(process.env.API_URL && {
     baseURL: process.env.API_URL
   })
