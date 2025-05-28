@@ -101,3 +101,39 @@ export const resetPassword = async (email, tempToken, password) => {
     throw error.response?.data.message || { message: '비밀번호 재설정 중 오류가 발생했습니다.' };
   }
 };
+
+export const checkDuplicateAccount = async (account) => {
+  try {
+    const response = await instance.post('/api/auth/checkDuplicate/account', { account });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '아이디 중복 확인에 실패했습니다.');
+  }
+};
+
+export const checkDuplicateEmail = async (email) => {
+  try {
+    const response = await instance.post('/api/auth/checkDuplicate/email', { email });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '이메일 중복 확인에 실패했습니다.');
+  }
+};
+
+export const checkDuplicateNickname = async (nickName) => {
+  try {
+    const response = await instance.post('/api/auth/checkDuplicate/nickname', { nickName });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '닉네임 중복 확인에 실패했습니다.');
+  }
+};
+
+export const verifyEmailCode = async (email, code) => {
+  try {
+    const response = await instance.post('/api/auth/checkDuplicate/email/result', { email, code });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '이메일 인증에 실패했습니다.');
+  }
+};
