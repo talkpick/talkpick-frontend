@@ -155,7 +155,10 @@ const LoginFormContent = () => {
                 <a href="/signup" className="text-sm text-blue-500 hover:underline">
                   회원가입
                 </a>
-                <a href="#" className="text-sm text-blue-500 hover:underline">
+                <a href="/recovery/account" className="text-sm text-blue-500 hover:underline">
+                  아이디 찾기
+                </a>
+                <a href="/recovery/password" className="text-sm text-blue-500 hover:underline">
                   비밀번호 찾기
                 </a>
               </div>
