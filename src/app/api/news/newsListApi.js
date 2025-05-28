@@ -1,12 +1,8 @@
-import instance from '@/lib/axios';
+import refreshAxios from '@/lib/axios';
 
 export async function getLatestNews(page, size) {
-  const response = await instance.get(
-    `/api/public/news/latest?page=${page}&size=${size}`,
-    {
-      withCredentials: false,
-    }
-  );
+  const response = await instance.get(`/api/public/news/latest?page=${page}&size=${size}`);
+  
   return response.data;
 }
 
