@@ -30,14 +30,15 @@ export default function CategoryNewsPage() {
       // 해당 카테고리의 Top Viewed News 가져오기
       const topNews = await getTopViewedNews(categoryId);
       const carouselGroups = [];
-
-      if (topNews.data?.items) {
-        const mainNews = topNews.data.items;
+      if (topNews.data) {
+        const mainNews = topNews.data;
+        console.log(mainNews);
         const similarNewsData = await getSimilarNews(mainNews.guid);
+        console.log(similarNewsData);
         
         carouselGroups.push({
           mainNews,
-          relatedNews: similarNewsData.data?.items || []
+          relatedNews: similarNewsData.data?.newsSearchResponseList.slice(1, 4) || []
         });
       }
 
@@ -77,7 +78,7 @@ export default function CategoryNewsPage() {
 
   useEffect(() => {
     fetchNews();
-    // fetchCarouselNews();
+    fetchCarouselNews();
   }, [categoryId]);
 
   const handleLoadMore = () => {
@@ -90,10 +91,10 @@ export default function CategoryNewsPage() {
     <>
       <Header selectedCategory={categoryId} />
       <div className="container mx-auto px-4 py-8">
-        {/* <NewsCarousel 
+        <NewsCarousel 
           carouselGroups={carouselNews}
           loading={carouselLoading}
-        /> */}
+        />
         {loading ? (
           <div className="min-h-[60vh] flex items-center justify-center">
             <div className="text-center">
@@ -109,12 +110,18 @@ export default function CategoryNewsPage() {
             </div>
           </div>
         ) : (
-          <NewsList 
-            news={news} 
-            hasNext={hasNext}
-            onLoadMore={handleLoadMore}
-            isLoading={isLoadingMore}
-          />
+          <>
+            <hr className="my-8 border-gray-500" />
+            <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
+              <span className="text-blue-500 text-3xl"># </span>최신뉴스
+            </h2>
+            <NewsList 
+              news={news} 
+              hasNext={hasNext}
+              onLoadMore={handleLoadMore}
+              isLoading={isLoadingMore}
+            />
+          </>
         )}
       </div>
       <Footer />

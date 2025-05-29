@@ -67,7 +67,10 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
           <div key={index} className="flex h-full min-w-full">
             {/* 메인 뉴스 */}
             <div className="w-1/2 p-4">
-              <Link href={`/news/detail/${group.mainNews.guid}`} className="block relative h-full rounded-lg overflow-hidden">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
+                <span className="text-blue-500 text-3xl">#  </span>인기뉴스
+              </h2>
+              <Link href={`/news/detail/${group.mainNews.guid}`} className="block relative h-[calc(100%-3rem)] rounded-lg overflow-hidden hover:ring-2 hover:ring-[#0E74F9] transition-all">
                 {group.mainNews.imageUrl ? (
                   <>
                     <img
@@ -91,10 +94,13 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
 
             {/* 관련 뉴스 */}
             <div className="w-1/2 p-4">
-              <div className="flex flex-col gap-4 h-full">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
+                <span className="text-blue-500 text-3xl">#  </span>연관뉴스
+              </h2>
+              <div className="flex flex-col gap-4 h-[calc(100%-3rem)]">
                 {group.relatedNews.map((news) => (
                   <Link key={news.newsId} href={`/news/detail/${news.newsId}`} className="block flex-1">
-                    <div className={`flex gap-4 bg-gray-50 rounded-lg overflow-hidden hover:bg-gray-100 transition-colors h-full ${!news.imageUrl ? 'p-4' : ''}`}>
+                    <div className={`flex gap-4 bg-gray-50 rounded-lg overflow-hidden hover:ring-2 hover:ring-[#0E74F9] transition-all h-full ${!news.imageUrl ? 'p-4' : ''}`}>
                       {news.imageUrl && (
                         <div className="relative w-1/3">
                           <img
