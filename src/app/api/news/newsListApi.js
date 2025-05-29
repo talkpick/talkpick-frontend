@@ -6,6 +6,17 @@ export async function getLatestNews(page, size) {
 }
 
 export async function getNewsByCategory(categoryId) {
-  const response = await instance.get(`/api/public/news/${categoryId}`);
+  const response = await 
+  instance.get(`/api/public/news/${categoryId}`);
   return response.data;
 } 
+
+export async function getTopViewedNews(categoryId) {
+  const response = await instance.get(`/api/public/news/top-viewed/${categoryId}`);
+  return response.data;
+}
+
+export async function getSimilarNews(newsId) {
+  const response = await instance.get(`/api/public/news/similar?newsId=${newsId}&page=0&size=4`);
+  return response.data;
+}

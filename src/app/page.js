@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getLatestNews } from '@/app/api/news/newsListApi';
+import { getLatestNews, getTopViewedNews, getSimilarNews } from '@/app/api/news/newsListApi';
 import NewsList from '@/components/news/NewsList';
 import NewsCarousel from '@/components/news/NewsCarousel';
 import Header from '@/components/Header';
@@ -15,8 +15,40 @@ export default function HomePage() {
   const [hasNext, setHasNext] = useState(false);
   const [pageNumber, setPageNumber] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [carouselNews, setCarouselNews] = useState([]);
+  const [carouselLoading, setCarouselLoading] = useState(true);
   const PAGE_SIZE = 5;
   const router = useRouter();
+
+  const fetchCarouselNews = async () => {
+    try {
+      setCarouselLoading(true);
+      
+      // 1. Top Viewed News 가져오기 (나중에는 Hot News도 추가)
+      const topNews = await getTopViewedNews("all");
+      // console.log(topNews);
+      const carouselGroups = [];
+
+      if (topNews.data) {
+        const mainNews = topNews.data;
+        console.log(mainNews);
+        const similarNewsData = await getSimilarNews(mainNews.guid);
+        console.log(similarNewsData);
+        
+        carouselGroups.push({
+          mainNews,
+          relatedNews: similarNewsData.data?.newsSearchResponseList.slice(1, 4) || []
+        });
+      }
+      console.log(carouselGroups);
+
+      setCarouselNews(carouselGroups);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCarouselLoading(false);
+    }
+  };
 
   const fetchNews = async (isLoadMore = false) => {
     try {
@@ -46,6 +78,7 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchNews();
+    fetchCarouselNews();
   }, []);
 
   const handleLoadMore = () => {
@@ -56,7 +89,10 @@ export default function HomePage() {
     <>
       <Header />
       <div className="container mx-auto px-4 py-8">
-        <NewsCarousel />
+        <NewsCarousel 
+          carouselGroups={carouselNews}
+          loading={carouselLoading}
+        />
         {loading ? (
           <div className="min-h-[60vh] flex items-center justify-center">
             <div className="text-center">
