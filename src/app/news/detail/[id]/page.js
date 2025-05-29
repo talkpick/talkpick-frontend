@@ -13,6 +13,8 @@ import SummaryIcon from '@/components/icons/SummaryIcon';
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { SOCKET_CONFIG, SOCKET_CONNECTION_TYPE } from '@/constants/socketConstants';
+import SelectableText from '@/components/SelectableText';
+import HighlightedText from '@/components/HighlightedText';
 
 
 // 이미지 URL에서 사이즈 정보 제거하는 함수
@@ -31,11 +33,13 @@ const NewsDetailPage = () => {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [userCount, setUserCount] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState(null);
   const chatRoomRef = useRef(null);
   const [showErrorToast, setShowErrorToast] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const socketRef = useRef(null);
-  
+  const [highlightSegments, setHighlightSegments] = useState([]);
+
 
   const scrollToChatRoom = () => {
     chatRoomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -69,6 +73,7 @@ const NewsDetailPage = () => {
       
       setNews(newsData);
       setSelectedCategory(getCategoryId(data.category));
+      setHighlightSegments(data.highlightSegments || []);
     } catch (error) {
       console.error('뉴스를 가져오는데 실패했습니다:', error);
       setError(error.message);
@@ -110,42 +115,71 @@ const NewsDetailPage = () => {
 
   // 채팅 에러 핸들러 추가
   const handleChatError = (error) => {
-    // if (error.code === 'AUTH_REQUIRED') {
-    //   setErrorMessage('로그인이 필요한 서비스입니다.');
-    //   setShowErrorToast(true);
-    //   setIsChatOpen(false);
-      
-    //   // 3초 후 토스트 메시지 숨기기
-    //   setTimeout(() => {
-    //     setShowErrorToast(false);
-    //   }, 3000);
-    // }
     setErrorMessage('채팅 서비스 연결에 실패했습니다.');
-      setShowErrorToast(true);
-      setIsChatOpen(false);
-      
-      // 3초 후 토스트 메시지 숨기기
-      setTimeout(() => {
-        setShowErrorToast(false);
-      }, 3000);
+    setShowErrorToast(true);
+    setIsChatOpen(false);
+    
+    // 3초 후 토스트 메시지 숨기기
+    setTimeout(() => {
+      setShowErrorToast(false);
+    }, 3000);
   };
+
+  // 문단별 하이라이트 분리
+  const getHighlightsForParagraph = (idx) =>
+    highlightSegments.filter(seg => seg.paragraphIndex === idx);
+
+  // // 스크랩 후 하이라이트 정보 갱신
+  // const handleSendScrap = async ({ snippetText, startOffset, endOffset, paragraphIndex }) => {
+  //   await fetch(`api/public/news/${params.id}/scrap`, {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({ snippetText, startOffset, endOffset, paragraphIndex })
+  //   });
+  //   // 스크랩 저장 후, 다시 하이라이트 정보 갱신
+  //   const res2 = await getNewsDetail(params.id);
+  //   setHighlightSegments(res2.data.highlightSegments || []);
+  // };
 
   // content를 문단별로 나누는 함수
   const parseContent = (content) => {
+    // 일반 텍스트 렌더링 함수
+    const renderText = (text, key = 0) => (
+      <p key={key} className="mb-4 leading-relaxed text-lg">
+        <HighlightedText
+          text={text}
+          highlights={getHighlightsForParagraph(key)}
+        />
+      </p>
+    );
+
+    // SelectableText로 감싸서 렌더링하는 함수
+    const renderSelectableText = (text, index = 0) => (
+      <SelectableText 
+        key={index} 
+        text={text}
+        paragraphIndex={index}
+        onSend={(selectionInfo) => {
+          console.log('Selected text info:', selectionInfo);
+          setSelectedQuote(selectionInfo);
+        }}
+      >
+        {renderText(text, index)}
+      </SelectableText>
+    );
+
     try {
       // 문자열을 파싱하여 배열로 변환
       const paragraphs = JSON.parse(content);
       
-      // 각 문단을 p 태그로 감싸서 반환
-      return paragraphs.map((paragraph, index) => (
-        <p key={index} className="mb-4 leading-relaxed text-lg">
-          {parse(paragraph)}
-        </p>
-      ));
+      // 각 문단을 렌더링
+      return paragraphs.map((paragraph, index) => 
+        isChatOpen ? renderSelectableText(paragraph, index) : renderText(paragraph, index)
+      );
     } catch (error) {
       console.error('Content 파싱 중 오류 발생:', error);
-      // 파싱 실패 시 원본 content를 그대로 반환
-      return <p className="mb-4 leading-relaxed text-lg">{parse(content)}</p>;
+      // 문자열 파싱 실패 시 원본 content를 그대로 반환
+      return isChatOpen ? renderSelectableText(content) : renderText(content);
     }
   };
   
@@ -333,7 +367,15 @@ const NewsDetailPage = () => {
                         </div>
                       </div>
                       <div className="flex-1 overflow-y-auto">
-                        <ChatRoom articleId={params.id} onError={handleChatError} isPcVersion={true} />
+                        <ChatRoom 
+                          articleId={params.id} 
+                          onError={handleChatError} 
+                          isPcVersion={true}
+                          isChatOpen={isChatOpen}
+                          setIsChatOpen={setIsChatOpen}
+                          selectedQuote={selectedQuote}
+                          setSelectedQuote={setSelectedQuote}
+                        />
                       </div>
                     </div>
 
@@ -487,7 +529,15 @@ const NewsDetailPage = () => {
                     } bg-white`}
                   >
                     <div className="h-full pb-safe">
-                      <ChatRoom articleId={params.id} onError={handleChatError} isPcVersion={false} />
+                      <ChatRoom 
+                        articleId={params.id} 
+                        onError={handleChatError} 
+                        isPcVersion={false}
+                        isChatOpen={isChatOpen}
+                        setIsChatOpen={setIsChatOpen}
+                        selectedQuote={selectedQuote}
+                        setSelectedQuote={setSelectedQuote}
+                      />
                     </div>
                   </div>
                 </div>

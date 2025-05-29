@@ -6,6 +6,7 @@ import { AuthContext } from '@/contexts/AuthContext';
 import { formatDate } from '@/lib/utils';
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { scrapQuote } from '@/app/api/chat/quote';
 
 /**
  * ChatRoom 컴포넌트
@@ -13,8 +14,7 @@ import SockJS from 'sockjs-client';
  * - 버튼 클릭 시 WebSocket 연결 후 채팅방 표시
  * - 퇴장 버튼으로 연결 해제
  */
-function ChatRoom({ articleId, onError, isPcVersion }) {
-  const [visible, setVisible] = useState(false);
+function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, selectedQuote, setSelectedQuote }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -40,14 +40,29 @@ function ChatRoom({ articleId, onError, isPcVersion }) {
 
   const send = () => {
     if (!input.trim() || !clientRef.current) return;
-    clientRef.current.send(`/app/chat.send`, {}, JSON.stringify({
+
+    // 메시지 데이터 구성
+    const messageData = {
       articleId,
       sender: nickname,
-      content: input.trim(),
       timestamp: new Date().toISOString(),
-      messageType: CHAT_MESSAGE_TYPE.CHAT
-    }));
+      messageType: selectedQuote ? CHAT_MESSAGE_TYPE.QUOTE : CHAT_MESSAGE_TYPE.CHAT,
+      content: selectedQuote 
+        ? JSON.stringify({
+            message: input.trim(),
+            snippetText: selectedQuote.snippetText,
+            paragraphIndex: selectedQuote.paragraphIndex,
+            startOffset: selectedQuote.startOffset,
+            endOffset: selectedQuote.endOffset
+          })
+        : input.trim()
+    };
+    clientRef.current.send(`/app/chat.send`, {}, JSON.stringify(messageData));
+    if(selectedQuote) {
+      scrapQuote(articleId, selectedQuote);
+    } 
     setInput('');
+    setSelectedQuote(null);
   };
 
   // 메시지 수신 콜백
@@ -65,7 +80,7 @@ function ChatRoom({ articleId, onError, isPcVersion }) {
     const stompClient = Stomp.over(socket);
     stompClient.connect({ Authorization: `Bearer ${localStorage.getItem('accessToken')}` }, () => {
       clientRef.current = stompClient;
-      setVisible(true);
+      setIsChatOpen(true);
       setMessages([]);
       stompClient.subscribe(`/topic/chat.${articleId}`, ({ body }) => {
         try {
@@ -102,7 +117,7 @@ function ChatRoom({ articleId, onError, isPcVersion }) {
       clientRef.current.disconnect();
       clientRef.current = null;
     }
-    setVisible(false);
+    setIsChatOpen(false);
     setMessages([]);
   };
 
@@ -122,7 +137,7 @@ function ChatRoom({ articleId, onError, isPcVersion }) {
 
   return (
     <div className="h-full flex flex-col">
-      {!visible ? (
+      {!isChatOpen ? (
         <button 
           onClick={openChat}
           className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
@@ -162,7 +177,16 @@ function ChatRoom({ articleId, onError, isPcVersion }) {
                         : 'bg-gray-200 px-3 py-2 rounded-lg'
                     }`}
                   >
-                    {msg.content}
+                    {msg.messageType === CHAT_MESSAGE_TYPE.QUOTE ? (
+                      <>
+                        <div className="border-l-4 border-gray-400 pl-2 my-2 text-sm italic opacity-75">
+                          "{msg.content.quote}"
+                        </div>
+                        <div>{msg.content.message}</div>
+                      </>
+                    ) : (
+                      <div>{msg.content}</div>
+                    )}
                   </div>
                   {msg.sender !== 'SYSTEM' && (
                     <div className={`text-xs text-gray-500 mt-1 ${
@@ -176,21 +200,46 @@ function ChatRoom({ articleId, onError, isPcVersion }) {
               <div ref={messagesEndRef} />
             </div>
           </div>
-          <div className="flex gap-2 p-2 bg-white border-t">
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-              className="flex-1 min-w-0 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
-              placeholder="메시지를 입력하세요..."
-            />
-            <button 
-              onClick={send}
-              className="shrink-0 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              전송
-            </button>
+          <div className="flex flex-col gap-2 p-2 bg-white">
+            {selectedQuote && (
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <div className="text-sm text-black flex items-center bg-sky-100 rounded-lg p-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" className="h-4 w-4 text-gray-400 mr-2" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="6,3 6,17 18,17" />
+                      <polyline points="14,13 18,17 14,21" />
+                    </svg>
+                    <span className="text-2xl font-serif text-black leading-none mr-1">"</span>
+                    {selectedQuote.snippetText}
+                    <span className="text-2xl font-serif text-black leading-none ml-1">"</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedQuote(null)}
+                  className="shrink-0 text-gray-400 hover:text-gray-600"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+                className="flex-1 min-w-0 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                placeholder="메시지를 입력하세요..."
+              />
+              <button 
+                onClick={send}
+                className="shrink-0 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                전송
+              </button>
+            </div>
           </div>
         </div>
       )}
