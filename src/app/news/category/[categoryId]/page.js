@@ -1,15 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { getLatestNews, getTopViewedNews, getSimilarNews } from '@/app/api/news/newsListApi';
+import { useParams } from 'next/navigation';
+import { getLatestNewsByCategory, getTopViewedNews, getSimilarNews } from '@/app/api/news/newsListApi';
 import NewsList from '@/components/news/NewsList';
 import NewsCarousel from '@/components/news/NewsCarousel';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
-export default function HomePage() {
+export default function CategoryNewsPage() {
+  const params = useParams();
+  const categoryId = params.categoryId;
+  
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,29 +22,24 @@ export default function HomePage() {
   const [carouselNews, setCarouselNews] = useState([]);
   const [carouselLoading, setCarouselLoading] = useState(true);
   const PAGE_SIZE = 5;
-  const router = useRouter();
 
   const fetchCarouselNews = async () => {
     try {
       setCarouselLoading(true);
       
-      // 1. Top Viewed News 가져오기 (나중에는 Hot News도 추가)
-      const topNews = await getTopViewedNews("all");
-      // console.log(topNews);
+      // 해당 카테고리의 Top Viewed News 가져오기
+      const topNews = await getTopViewedNews(categoryId);
       const carouselGroups = [];
 
-      if (topNews.data) {
-        const mainNews = topNews.data;
-        console.log(mainNews);
+      if (topNews.data?.items) {
+        const mainNews = topNews.data.items;
         const similarNewsData = await getSimilarNews(mainNews.guid);
-        console.log(similarNewsData);
         
         carouselGroups.push({
           mainNews,
-          relatedNews: similarNewsData.data?.newsSearchResponseList.slice(1, 4) || []
+          relatedNews: similarNewsData.data?.items || []
         });
       }
-      console.log(carouselGroups);
 
       setCarouselNews(carouselGroups);
     } catch (err) {
@@ -59,7 +57,7 @@ export default function HomePage() {
         setLoading(true);
       }
       
-      const data = await getLatestNews(lastId, PAGE_SIZE);
+      const data = await getLatestNewsByCategory(categoryId, lastId, PAGE_SIZE);
       setHasNext(data.data.hasNext);
       
       if (isLoadMore) {
@@ -67,6 +65,7 @@ export default function HomePage() {
       } else {
         setNews(data.data.items);
       }
+      
       setLastId(prev => data.data.items[data.data.items.length - 1].id);
     } catch (err) {
       setError(err.message);
@@ -79,7 +78,7 @@ export default function HomePage() {
   useEffect(() => {
     fetchNews();
     // fetchCarouselNews();
-  }, []);
+  }, [categoryId]);
 
   const handleLoadMore = () => {
     fetchNews(true);
@@ -89,7 +88,7 @@ export default function HomePage() {
 
   return (
     <>
-      <Header />
+      <Header selectedCategory={categoryId} />
       <div className="container mx-auto px-4 py-8">
         {/* <NewsCarousel 
           carouselGroups={carouselNews}
@@ -99,7 +98,7 @@ export default function HomePage() {
           <div className="min-h-[60vh] flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E74F9] mx-auto mb-4"></div>
-              <p className="text-gray-600">최신 뉴스를 불러오는 중입니다...</p>
+              <p className="text-gray-600">뉴스를 불러오는 중입니다...</p>
             </div>
           </div>
         ) : error ? (
