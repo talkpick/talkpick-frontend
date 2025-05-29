@@ -58,19 +58,19 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
   }
 
   return (
-    <div className="relative w-full h-[500px] bg-white mb-8 overflow-hidden group">
+    <div className="relative w-full h-auto md:h-[500px] bg-white mb-8 overflow-hidden group">
       <div 
         className="flex h-full transition-transform duration-500 ease-in-out"
         style={{ transform: `translateX(-${currentSlide * 100}%)` }}
       >
         {carouselGroups.map((group, index) => (
-          <div key={index} className="flex h-full min-w-full">
+          <div key={index} className="flex h-full min-w-full flex-col md:flex-row">
             {/* 메인 뉴스 */}
-            <div className="w-1/2 p-4">
+            <div className="w-full md:w-1/2 p-4">
               <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
-                <span className="text-blue-500 text-3xl">#  </span>인기뉴스
+                <span className="text-blue-500 text-3xl"># </span>인기뉴스
               </h2>
-              <Link href={`/news/detail/${group.mainNews.guid}`} className="block relative h-[calc(100%-3rem)] rounded-lg overflow-hidden hover:ring-2 hover:ring-[#0E74F9] transition-all">
+              <Link href={`/news/detail/${group.mainNews.guid}`} className="block relative h-[250px] md:h-[calc(100%-3rem)] rounded-lg overflow-hidden hover:ring-2 hover:ring-[#0E74F9] transition-all">
                 {group.mainNews.imageUrl ? (
                   <>
                     <img
@@ -93,13 +93,13 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
             </div>
 
             {/* 관련 뉴스 */}
-            <div className="w-1/2 p-4">
+            <div className="w-full md:w-1/2 p-4">
               <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
-                <span className="text-blue-500 text-3xl">#  </span>연관뉴스
+                <span className="text-blue-500 text-3xl"># </span>연관뉴스
               </h2>
-              <div className="flex flex-col gap-4 h-[calc(100%-3rem)]">
+              <div className="flex flex-col gap-3 h-auto md:h-[calc(100%-3rem)]">
                 {group.relatedNews.map((news) => (
-                  <Link key={news.newsId} href={`/news/detail/${news.newsId}`} className="block flex-1">
+                  <Link key={news.newsId} href={`/news/detail/${news.newsId}`} className="block h-[120px] md:flex-1">
                     <div className={`flex gap-4 bg-gray-50 rounded-lg overflow-hidden hover:ring-2 hover:ring-[#0E74F9] transition-all h-full ${!news.imageUrl ? 'p-4' : ''}`}>
                       {news.imageUrl && (
                         <div className="relative w-1/3">
@@ -111,9 +111,9 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
                         </div>
                       )}
                       <div className={`${news.imageUrl ? 'w-2/3 p-2' : 'w-full'} flex flex-col justify-center`}>
-                        <h3 className="text-base font-bold mb-2 text-gray-900 line-clamp-2 hover:text-blue-600 transition-colors">{news.title}</h3>
+                        <h3 className="text-sm md:text-base font-bold mb-1 md:mb-2 text-gray-900 line-clamp-2 hover:text-blue-600 transition-colors">{news.title}</h3>
                         <p className="text-xs text-gray-600 line-clamp-2">{truncateText(JSON.parse(news.content).join(''), 80)}</p>
-                        <p className="text-xs text-gray-500 mt-2">{news.date}</p>
+                        <p className="text-xs text-gray-500 mt-1">{news.date}</p>
                       </div>
                     </div>
                   </Link>
