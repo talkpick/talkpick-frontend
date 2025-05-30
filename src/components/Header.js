@@ -33,13 +33,12 @@ const Header = () => {
       setIsSearchVisible(true);
       setShowSubCategories(false);
       setSelectedCategory(null);
-      
-
-    //   setSelectedCategory('news');
-    //   setShowSubCategories(true);
-    //   // URL에서 카테고리 ID 추출
-    //   const categoryId = pathname.split('/news/')[1];
-    //   setSelectedSubCategory(categoryId);
+    } else if (pathname.startsWith('/news/category/')) {
+      setSelectedCategory('news');
+      setShowSubCategories(true);
+      // URL에서 카테고리 ID 추출
+      const categoryId = pathname.split('/news/category/')[1];
+      setSelectedSubCategory(categoryId);
     }
   }, [pathname]);
 
@@ -62,7 +61,7 @@ const Header = () => {
 
   const handleSubCategoryClick = (categoryId) => {
     setSelectedSubCategory(categoryId);
-    router.push(`/news/${categoryId}`);
+    router.push(`/news/category/${categoryId}`);
   };
 
   const handleSearchClick = () => {
