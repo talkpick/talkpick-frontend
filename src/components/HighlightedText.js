@@ -53,7 +53,7 @@ export default function HighlightedText({ text, highlights }) {
       );
     }
   }
-  return React.createElement('div', null, elements);
+  return React.createElement('span', null, elements);
 }
 
 // HighlightedText.propTypes = {

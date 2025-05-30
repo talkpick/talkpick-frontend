@@ -37,7 +37,7 @@ export default function SelectableText({ text, children, onSend, paragraphIndex 
       setSelInfo(null);
       return;
     }
-    const end = start + snippet.length - 1;
+    const end = start + snippet.length;
 
     // 선택 영역의 상대 위치 계산 (컨테이너 기준)
     const relativeX = (rect.left - containerRect.left + rect.width) / containerRect.width * 100;

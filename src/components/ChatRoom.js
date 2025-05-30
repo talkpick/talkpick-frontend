@@ -14,13 +14,14 @@ import { scrapQuote } from '@/app/api/chat/quote';
  * - 버튼 클릭 시 WebSocket 연결 후 채팅방 표시
  * - 퇴장 버튼으로 연결 해제
  */
-function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, selectedQuote, setSelectedQuote }) {
+function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, selectedQuote, setSelectedQuote, onQuoteClick }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const { nickname } = useContext(AuthContext);
   const clientRef = useRef(null);
   const chatContainerRef = useRef(null);
+  const [visible, setVisible] = useState(false);
   
   const scrollToBottom = () => {
     if (isPcVersion) {
@@ -68,6 +69,14 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
   // 메시지 수신 콜백
   const onMessage = (msg) => {
     console.log("onMessage", msg);
+    // content가 JSON 문자열인 경우 파싱
+    if (typeof msg.content === 'string' && msg.content.startsWith('{')) {
+      try {
+        msg.content = JSON.parse(msg.content);
+      } catch (error) {
+        console.error("메시지 content 파싱 오류:", error);
+      }
+    }
     setMessages(prev => [...prev, msg]);
   };
 
@@ -81,6 +90,7 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
     stompClient.connect({ Authorization: `Bearer ${localStorage.getItem('accessToken')}` }, () => {
       clientRef.current = stompClient;
       setIsChatOpen(true);
+      setVisible(true);
       setMessages([]);
       stompClient.subscribe(`/topic/chat.${articleId}`, ({ body }) => {
         try {
@@ -118,9 +128,16 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
       clientRef.current = null;
     }
     setIsChatOpen(false);
+    setVisible(false);
     setMessages([]);
   };
 
+  // 인용구 클릭 핸들러
+  const handleQuoteClick = (paragraphIndex, startOffset, endOffset) => {
+    if (onQuoteClick) {
+      onQuoteClick(paragraphIndex, startOffset, endOffset);
+    }
+  };
 
   // 채팅방 연결관리
   useEffect(() => {
@@ -137,7 +154,7 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
 
   return (
     <div className="h-full flex flex-col">
-      {!isChatOpen ? (
+      {!visible ? (
         <button 
           onClick={openChat}
           className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
@@ -168,6 +185,22 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
                   {msg.sender !== 'SYSTEM' && msg.sender !== nickname && (
                     <strong className="block mb-1 text-sm">{msg.sender}</strong>
                   )}
+                  {msg.content.snippetText && (
+                    <div className={`mb-2 ${
+                      msg.sender === nickname ? 'text-right' : 'text-left'
+                    }`}>
+                      <button
+                        onClick={() => handleQuoteClick(
+                          msg.content.paragraphIndex,
+                          msg.content.startOffset,
+                          msg.content.endOffset
+                        )}
+                        className="inline-block max-w-[80%] border-l-4 border-gray-400 pl-2 text-sm italic bg-gray-50 rounded-r text-black hover:bg-gray-100 transition-colors cursor-pointer"
+                      >
+                        "{msg.content.snippetText}"
+                      </button>
+                    </div>
+                  )}
                   <div
                     className={`inline-block max-w-[80%] break-words ${
                       msg.sender === 'SYSTEM'
@@ -177,13 +210,8 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
                         : 'bg-gray-200 px-3 py-2 rounded-lg'
                     }`}
                   >
-                    {msg.messageType === CHAT_MESSAGE_TYPE.QUOTE ? (
-                      <>
-                        <div className="border-l-4 border-gray-400 pl-2 my-2 text-sm italic opacity-75">
-                          "{msg.content.quote}"
-                        </div>
-                        <div>{msg.content.message}</div>
-                      </>
+                    {msg.content.snippetText ? (
+                      <div className="font-medium">{msg.content.message}</div>
                     ) : (
                       <div>{msg.content}</div>
                     )}

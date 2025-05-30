@@ -40,6 +40,19 @@ const NewsDetailPage = () => {
   const socketRef = useRef(null);
   const [highlightSegments, setHighlightSegments] = useState([]);
 
+  // 인용구 클릭 시 해당 문단으로 스크롤 이동하는 함수
+  const handleQuoteScroll = (paragraphIndex) => {
+    const newsContent = document.getElementById('news-content');
+    if (newsContent) {
+      const paragraphs = newsContent.getElementsByTagName('p');
+      if (paragraphs[paragraphIndex]) {
+        paragraphs[paragraphIndex].scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
+    }
+  };
 
   const scrollToChatRoom = () => {
     chatRoomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -155,17 +168,21 @@ const NewsDetailPage = () => {
 
     // SelectableText로 감싸서 렌더링하는 함수
     const renderSelectableText = (text, index = 0) => (
-      <SelectableText 
-        key={index} 
-        text={text}
-        paragraphIndex={index}
-        onSend={(selectionInfo) => {
-          console.log('Selected text info:', selectionInfo);
-          setSelectedQuote(selectionInfo);
-        }}
-      >
-        {renderText(text, index)}
-      </SelectableText>
+      <p key={index} className="mb-4 leading-relaxed text-lg">
+        <SelectableText 
+          text={text}
+          paragraphIndex={index}
+          onSend={(selectionInfo) => {
+            console.log('Selected text info:', selectionInfo);
+            setSelectedQuote(selectionInfo);
+          }}
+        >
+          <HighlightedText
+            text={text}
+            highlights={getHighlightsForParagraph(index)}
+          />
+        </SelectableText>
+      </p>
     );
 
     try {
@@ -313,7 +330,7 @@ const NewsDetailPage = () => {
 
                 {/* 본문 */}
                 <div className="space-y-6">
-                  <div className="prose prose-lg max-w-none">
+                  <div id="news-content" className="prose prose-lg max-w-none">
                     {parseContent(news.content)}
                   </div>
                 </div>
@@ -375,6 +392,7 @@ const NewsDetailPage = () => {
                           setIsChatOpen={setIsChatOpen}
                           selectedQuote={selectedQuote}
                           setSelectedQuote={setSelectedQuote}
+                          onQuoteClick={handleQuoteScroll}
                         />
                       </div>
                     </div>
@@ -480,7 +498,7 @@ const NewsDetailPage = () => {
 
                   {/* 본문 */}
                   <div className="space-y-6">
-                    <div className="prose prose-lg max-w-none">
+                    <div id="news-content" className="prose prose-lg max-w-none">
                       {parseContent(news.content)}
                     </div>
                   </div>
@@ -514,7 +532,7 @@ const NewsDetailPage = () => {
                       <span className="font-medium">채팅방 {isChatOpen ? '닫기' : '열기'}</span>
                       <svg 
                         xmlns="http://www.w3.org/2000/svg" 
-                        className={`h-5 w-5 transform transition-transform ${isChatOpen ? 'rotate-180' : ''}`} 
+                        className={`h-5 w-5 transform transition-transform ${isChatOpen ? '' : 'rotate-180'}`} 
                         fill="none" 
                         viewBox="0 0 24 24" 
                         stroke="currentColor"
@@ -537,6 +555,7 @@ const NewsDetailPage = () => {
                         setIsChatOpen={setIsChatOpen}
                         selectedQuote={selectedQuote}
                         setSelectedQuote={setSelectedQuote}
+                        onQuoteClick={handleQuoteScroll}
                       />
                     </div>
                   </div>
