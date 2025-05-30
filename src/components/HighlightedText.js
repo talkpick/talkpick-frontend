@@ -1,9 +1,10 @@
 import React from 'react';
 // import PropTypes from 'prop-types';
 
-export default function HighlightedText({ text, highlights }) {
+export default function HighlightedText({ text, highlights, user=false }) {
 
   const getOpacity = (count) => {
+    if (user) return 0.5;
     if (count <= 3) return 0.25;
     if (count <= 6) return 0.5;
     if (count <= 9) return 0.75;
@@ -63,5 +64,6 @@ export default function HighlightedText({ text, highlights }) {
 //       coverCount: PropTypes.number.isRequired
 //     })
 //   ).isRequired,
+//   user: PropTypes.bool
 // };
 
