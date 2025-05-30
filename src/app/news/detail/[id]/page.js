@@ -13,6 +13,8 @@ import SummaryIcon from '@/components/icons/SummaryIcon';
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { SOCKET_CONFIG, SOCKET_CONNECTION_TYPE } from '@/constants/socketConstants';
+import SelectableText from '@/components/SelectableText';
+import HighlightedText from '@/components/HighlightedText';
 
 
 // 이미지 URL에서 사이즈 정보 제거하는 함수
@@ -31,11 +33,27 @@ const NewsDetailPage = () => {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [userCount, setUserCount] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState(null);
   const chatRoomRef = useRef(null);
   const [showErrorToast, setShowErrorToast] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const socketRef = useRef(null);
-  
+  const [highlightSegments, setHighlightSegments] = useState([]);
+
+  // 인용구 클릭 시 해당 문단으로 스크롤 이동하는 함수
+  const handleQuoteScroll = (paragraphIndex) => {
+    const newsContent = document.getElementById('news-content');
+    if (newsContent) {
+      const paragraphs = newsContent.getElementsByTagName('p');
+      if (paragraphs[paragraphIndex]) {
+        paragraphs[paragraphIndex].scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
+    }
+  };
 
   const scrollToChatRoom = () => {
     chatRoomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -69,6 +87,7 @@ const NewsDetailPage = () => {
       
       setNews(newsData);
       setSelectedCategory(getCategoryId(data.category));
+      setHighlightSegments(data.highlightSegments || []);
     } catch (error) {
       console.error('뉴스를 가져오는데 실패했습니다:', error);
       setError(error.message);
@@ -110,42 +129,76 @@ const NewsDetailPage = () => {
 
   // 채팅 에러 핸들러 추가
   const handleChatError = (error) => {
-    // if (error.code === 'AUTH_REQUIRED') {
-    //   setErrorMessage('로그인이 필요한 서비스입니다.');
-    //   setShowErrorToast(true);
-    //   setIsChatOpen(false);
-      
-    //   // 3초 후 토스트 메시지 숨기기
-    //   setTimeout(() => {
-    //     setShowErrorToast(false);
-    //   }, 3000);
-    // }
     setErrorMessage('채팅 서비스 연결에 실패했습니다.');
-      setShowErrorToast(true);
-      setIsChatOpen(false);
-      
-      // 3초 후 토스트 메시지 숨기기
-      setTimeout(() => {
-        setShowErrorToast(false);
-      }, 3000);
+    setShowErrorToast(true);
+    setIsChatOpen(false);
+    setIsChatLoading(false);
+    
+    // 3초 후 토스트 메시지 숨기기
+    setTimeout(() => {
+      setShowErrorToast(false);
+    }, 3000);
   };
+
+  // 문단별 하이라이트 분리
+  const getHighlightsForParagraph = (idx) =>
+    highlightSegments.filter(seg => seg.paragraphIndex === idx);
+
+  // // 스크랩 후 하이라이트 정보 갱신
+  // const handleSendScrap = async ({ snippetText, startOffset, endOffset, paragraphIndex }) => {
+  //   await fetch(`api/public/news/${params.id}/scrap`, {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({ snippetText, startOffset, endOffset, paragraphIndex })
+  //   });
+  //   // 스크랩 저장 후, 다시 하이라이트 정보 갱신
+  //   const res2 = await getNewsDetail(params.id);
+  //   setHighlightSegments(res2.data.highlightSegments || []);
+  // };
 
   // content를 문단별로 나누는 함수
   const parseContent = (content) => {
+    // 일반 텍스트 렌더링 함수
+    const renderText = (text, key = 0) => (
+      <p key={key} className="mb-4 leading-relaxed text-lg">
+        <HighlightedText
+          text={text}
+          highlights={getHighlightsForParagraph(key)}
+        />
+      </p>
+    );
+
+    // SelectableText로 감싸서 렌더링하는 함수
+    const renderSelectableText = (text, index = 0) => (
+      <p key={index} className="mb-4 leading-relaxed text-lg">
+        <SelectableText 
+          text={text}
+          paragraphIndex={index}
+          onSend={(selectionInfo) => {
+            console.log('Selected text info:', selectionInfo);
+            setSelectedQuote(selectionInfo);
+          }}
+        >
+          <HighlightedText
+            text={text}
+            highlights={getHighlightsForParagraph(index)}
+          />
+        </SelectableText>
+      </p>
+    );
+
     try {
       // 문자열을 파싱하여 배열로 변환
       const paragraphs = JSON.parse(content);
       
-      // 각 문단을 p 태그로 감싸서 반환
-      return paragraphs.map((paragraph, index) => (
-        <p key={index} className="mb-4 leading-relaxed text-lg">
-          {parse(paragraph)}
-        </p>
-      ));
+      // 각 문단을 렌더링
+      return paragraphs.map((paragraph, index) => 
+        isChatOpen ? renderSelectableText(paragraph, index) : renderText(paragraph, index)
+      );
     } catch (error) {
       console.error('Content 파싱 중 오류 발생:', error);
-      // 파싱 실패 시 원본 content를 그대로 반환
-      return <p className="mb-4 leading-relaxed text-lg">{parse(content)}</p>;
+      // 문자열 파싱 실패 시 원본 content를 그대로 반환
+      return isChatOpen ? renderSelectableText(content) : renderText(content);
     }
   };
   
@@ -279,7 +332,7 @@ const NewsDetailPage = () => {
 
                 {/* 본문 */}
                 <div className="space-y-6">
-                  <div className="prose prose-lg max-w-none">
+                  <div id="news-content" className="prose prose-lg max-w-none">
                     {parseContent(news.content)}
                   </div>
                 </div>
@@ -333,7 +386,18 @@ const NewsDetailPage = () => {
                         </div>
                       </div>
                       <div className="flex-1 overflow-y-auto">
-                        <ChatRoom articleId={params.id} onError={handleChatError} isPcVersion={true} />
+                        <ChatRoom 
+                          articleId={params.id} 
+                          onError={handleChatError} 
+                          isPcVersion={true}
+                          isChatOpen={isChatOpen}
+                          setIsChatOpen={setIsChatOpen}
+                          selectedQuote={selectedQuote}
+                          setSelectedQuote={setSelectedQuote}
+                          onQuoteClick={handleQuoteScroll}
+                          isChatLoading={isChatLoading}
+                          setIsChatLoading={setIsChatLoading}
+                        />
                       </div>
                     </div>
 
@@ -363,8 +427,7 @@ const NewsDetailPage = () => {
               </div>
 
               {/* 뉴스 컨테이너 - 카드 스타일 */}
-              <div className="bg-white rounded-[2rem] shadow-inner flex flex-col h-[calc(100vh-10rem)] overflow-hidden">
-                {/* 위와 동일한 내용 반복 */}
+              <div className="bg-white rounded-[2rem] shadow-inner">
                 <div className="p-6 sm:p-4">
                   {/* 카테고리 */}
                   <div className="flex items-center gap-4 mb-4">
@@ -413,8 +476,8 @@ const NewsDetailPage = () => {
                   </div>
                 </div>
 
-                {/* 뉴스 본문 영역 - 스크롤 가능 */}
-                <div className="flex-1 overflow-y-auto px-6 sm:px-4">
+                {/* 뉴스 본문 영역 */}
+                <div className="px-6 sm:px-4">
                   {/* 요약 섹션 */}
                   <div className={`mb-6 transition-all duration-300 ease-in-out ${isSummaryOpen ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
                     <div className="pt-2">
@@ -438,7 +501,7 @@ const NewsDetailPage = () => {
 
                   {/* 본문 */}
                   <div className="space-y-6">
-                    <div className="prose prose-lg max-w-none">
+                    <div id="news-content" className="prose prose-lg max-w-none">
                       {parseContent(news.content)}
                     </div>
                   </div>
@@ -462,23 +525,32 @@ const NewsDetailPage = () => {
                 </div>
 
                 {/* 채팅방 영역 */}
-                <div className="bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]" ref={chatRoomRef}>
+                <div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50" ref={chatRoomRef}>
                   <button
                     onClick={() => setIsChatOpen(!isChatOpen)}
-                    className="w-full py-3 px-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                    disabled={isChatLoading}
+                    className={`w-full py-3 px-4 flex items-center justify-between transition-colors ${
+                      isChatLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                    }`}
                   >
                     <span className="text-sm text-gray-500">현재 {userCount}명이 참여 중</span>
                     <div className="flex items-center gap-2 text-[#0E74F9]">
-                      <span className="font-medium">채팅방 {isChatOpen ? '닫기' : '열기'}</span>
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        className={`h-5 w-5 transform transition-transform ${isChatOpen ? 'rotate-180' : ''}`} 
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      {isChatLoading ? (
+                        <span className="font-medium">연결 중...</span>
+                      ) : (
+                        <>
+                          <span className="font-medium">채팅방 {isChatOpen ? '닫기' : '열기'}</span>
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            className={`h-5 w-5 transform transition-transform ${isChatOpen ? '' : 'rotate-180'}`} 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </>
+                      )}
                     </div>
                   </button>
                   <div 
@@ -487,7 +559,18 @@ const NewsDetailPage = () => {
                     } bg-white`}
                   >
                     <div className="h-full pb-safe">
-                      <ChatRoom articleId={params.id} onError={handleChatError} isPcVersion={false} />
+                      <ChatRoom 
+                        articleId={params.id} 
+                        onError={handleChatError} 
+                        isPcVersion={false}
+                        isChatOpen={isChatOpen}
+                        setIsChatOpen={setIsChatOpen}
+                        selectedQuote={selectedQuote}
+                        setSelectedQuote={setSelectedQuote}
+                        onQuoteClick={handleQuoteScroll}
+                        isChatLoading={isChatLoading}
+                        setIsChatLoading={setIsChatLoading}
+                      />
                     </div>
                   </div>
                 </div>

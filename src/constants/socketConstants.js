@@ -7,7 +7,8 @@ export const CHAT_MESSAGE_TYPE = {
   CHAT: 'CHAT',
   JOIN: 'JOIN',
   LEAVE: 'LEAVE',
-  SYSTEM: 'SYSTEM'
+  SYSTEM: 'SYSTEM',
+  QUOTE: 'QUOTE'
 };
 
 export const SOCKET_CONFIG = {
