@@ -226,7 +226,7 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
                         )}
                         className="inline-block max-w-[80%] border-l-4 border-gray-400 pl-2 text-sm italic bg-gray-50 rounded-r text-black hover:bg-gray-100 transition-colors cursor-pointer"
                       >
-                        "{msg.content.snippetText}"
+                        {`\"`}{msg.content.snippetText}{`\"`}
                       </button>
                     </div>
                   )}
@@ -266,9 +266,9 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
                       <polyline points="6,3 6,17 18,17" />
                       <polyline points="14,13 18,17 14,21" />
                     </svg>
-                    <span className="text-2xl font-serif text-black leading-none mr-1">"</span>
+                    <span className="text-2xl font-serif text-black leading-none mr-1">{`\"`}</span>
                     {selectedQuote.snippetText}
-                    <span className="text-2xl font-serif text-black leading-none ml-1">"</span>
+                    <span className="text-2xl font-serif text-black leading-none ml-1">{`\"`}</span>
                   </div>
                 </div>
                 <button
