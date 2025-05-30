@@ -28,10 +28,7 @@ export default function DashboardPage() {
       });
   }, []);
 
-  const getHighlightsForParagraph = (paragraphIndex) => {
-    console.log(paragraphIndex,"에 대한 하이라이트: ", highlights[paragraphIndex]);
-    return highlights[paragraphIndex] || [];
-  };
+
 
   const parseContent = (content, highlights) => {
     const renderText = (text, key = 0) => {
@@ -169,14 +166,12 @@ export default function DashboardPage() {
               <div className="prose max-w-none">
                 {parseContent(selectedNews.content, selectedNews.highlights)}
                 <div className="mt-4">
-                  <a
-                    href={selectedNews.originalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => window.location.href = `/news/detail/${selectedNews.newsId}`}
                     className="text-[#0E74F9] hover:underline"
                   >
-                    원문 보기 →
-                  </a>
+                    뉴스 상세페이지로 이동 →
+                  </button>
                 </div>
               </div>
             </div>
