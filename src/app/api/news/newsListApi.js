@@ -14,9 +14,9 @@ export async function getLatestNews(lastId, size) {
 export async function getLatestNewsByCategory(category,lastId, size) {
   let response = null;
   if(lastId === null) {
-    response = await refreshAxios.get(`/api/public/news/latest/category?category=${category}&size=${size}`);
+    response = await refreshAxios.get(`/api/public/news/latest/${category}?size=${size}`);
   } else {
-    response = await refreshAxios.get(`/api/public/news/latest/category?category=${category}&lastId=${lastId}&size=${size}`);
+    response = await refreshAxios.get(`/api/public/news/latest/${category}?lastId=${lastId}&size=${size}`);
   }
   return response.data;
 } 

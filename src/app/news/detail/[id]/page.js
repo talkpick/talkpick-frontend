@@ -129,6 +129,7 @@ const NewsDetailPage = () => {
 
   // 채팅 에러 핸들러 추가
   const handleChatError = (error) => {
+    console.log(error);
     setErrorMessage('채팅 서비스 연결에 실패했습니다.');
     setShowErrorToast(true);
     setIsChatOpen(false);

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { truncateText } from '@/lib/utils';
+import parse from 'html-react-parser';
 
 export default function NewsList({ news, hasNext, onLoadMore, isLoading }) {
   return (
@@ -22,7 +23,7 @@ export default function NewsList({ news, hasNext, onLoadMore, isLoading }) {
             </div>
             <div className="flex-grow">
               <h3 className="text-lg font-semibold mb-2 hover:text-[#0E74F9] transition-colors">
-                {item.title}
+                {parse(item.title)}
               </h3>
               <p className="text-gray-600 mb-2">{truncateText(JSON.parse(item.content).join(''))}</p>
               <p className="text-gray-600 mb-2">{item.category}</p>
