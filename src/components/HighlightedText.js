@@ -2,13 +2,11 @@ import React from 'react';
 // import PropTypes from 'prop-types';
 
 export default function HighlightedText({ text, highlights }) {
-  const maxCount = Math.max(...highlights.map(h => h.coverCount), 1);
 
   const getOpacity = (count) => {
-    const ratio = count / maxCount;
-    if (ratio <= 0.25) return 0.25;
-    if (ratio <= 0.5 ) return 0.5;
-    if (ratio <= 0.75) return 0.75;
+    if (count <= 3) return 0.25;
+    if (count <= 6) return 0.5;
+    if (count <= 9) return 0.75;
     return 1;
   };
 

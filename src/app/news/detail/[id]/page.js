@@ -33,6 +33,7 @@ const NewsDetailPage = () => {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [userCount, setUserCount] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const chatRoomRef = useRef(null);
   const [showErrorToast, setShowErrorToast] = useState(false);
@@ -131,6 +132,7 @@ const NewsDetailPage = () => {
     setErrorMessage('채팅 서비스 연결에 실패했습니다.');
     setShowErrorToast(true);
     setIsChatOpen(false);
+    setIsChatLoading(false);
     
     // 3초 후 토스트 메시지 숨기기
     setTimeout(() => {
@@ -393,6 +395,8 @@ const NewsDetailPage = () => {
                           selectedQuote={selectedQuote}
                           setSelectedQuote={setSelectedQuote}
                           onQuoteClick={handleQuoteScroll}
+                          isChatLoading={isChatLoading}
+                          setIsChatLoading={setIsChatLoading}
                         />
                       </div>
                     </div>
@@ -423,8 +427,7 @@ const NewsDetailPage = () => {
               </div>
 
               {/* 뉴스 컨테이너 - 카드 스타일 */}
-              <div className="bg-white rounded-[2rem] shadow-inner flex flex-col h-[calc(100vh-10rem)] overflow-hidden">
-                {/* 위와 동일한 내용 반복 */}
+              <div className="bg-white rounded-[2rem] shadow-inner">
                 <div className="p-6 sm:p-4">
                   {/* 카테고리 */}
                   <div className="flex items-center gap-4 mb-4">
@@ -473,8 +476,8 @@ const NewsDetailPage = () => {
                   </div>
                 </div>
 
-                {/* 뉴스 본문 영역 - 스크롤 가능 */}
-                <div className="flex-1 overflow-y-auto px-6 sm:px-4">
+                {/* 뉴스 본문 영역 */}
+                <div className="px-6 sm:px-4">
                   {/* 요약 섹션 */}
                   <div className={`mb-6 transition-all duration-300 ease-in-out ${isSummaryOpen ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
                     <div className="pt-2">
@@ -522,23 +525,32 @@ const NewsDetailPage = () => {
                 </div>
 
                 {/* 채팅방 영역 */}
-                <div className="bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]" ref={chatRoomRef}>
+                <div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50" ref={chatRoomRef}>
                   <button
                     onClick={() => setIsChatOpen(!isChatOpen)}
-                    className="w-full py-3 px-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                    disabled={isChatLoading}
+                    className={`w-full py-3 px-4 flex items-center justify-between transition-colors ${
+                      isChatLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                    }`}
                   >
                     <span className="text-sm text-gray-500">현재 {userCount}명이 참여 중</span>
                     <div className="flex items-center gap-2 text-[#0E74F9]">
-                      <span className="font-medium">채팅방 {isChatOpen ? '닫기' : '열기'}</span>
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        className={`h-5 w-5 transform transition-transform ${isChatOpen ? '' : 'rotate-180'}`} 
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      {isChatLoading ? (
+                        <span className="font-medium">연결 중...</span>
+                      ) : (
+                        <>
+                          <span className="font-medium">채팅방 {isChatOpen ? '닫기' : '열기'}</span>
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            className={`h-5 w-5 transform transition-transform ${isChatOpen ? '' : 'rotate-180'}`} 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </>
+                      )}
                     </div>
                   </button>
                   <div 
@@ -556,6 +568,8 @@ const NewsDetailPage = () => {
                         selectedQuote={selectedQuote}
                         setSelectedQuote={setSelectedQuote}
                         onQuoteClick={handleQuoteScroll}
+                        isChatLoading={isChatLoading}
+                        setIsChatLoading={setIsChatLoading}
                       />
                     </div>
                   </div>

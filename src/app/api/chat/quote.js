@@ -2,7 +2,7 @@ import instance from '@/lib/axios';
 
 export const scrapQuote = async (articleId, quote) => {
     try {
-      const response = await instance.post(`/api/public/news/${articleId}/scrap`, 
+      const response = await instance.post(`/api/scrap/${articleId}`, 
         quote
       );
       return response.data;

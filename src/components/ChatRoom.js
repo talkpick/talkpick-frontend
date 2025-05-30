@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils';
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { scrapQuote } from '@/app/api/chat/quote';
+import { fetchChatMessages } from '@/app/api/chat/chatLoadingApi';
 
 /**
  * ChatRoom 컴포넌트
@@ -14,7 +15,7 @@ import { scrapQuote } from '@/app/api/chat/quote';
  * - 버튼 클릭 시 WebSocket 연결 후 채팅방 표시
  * - 퇴장 버튼으로 연결 해제
  */
-function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, selectedQuote, setSelectedQuote, onQuoteClick }) {
+function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, selectedQuote, setSelectedQuote, onQuoteClick, isChatLoading, setIsChatLoading }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -68,7 +69,6 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
 
   // 메시지 수신 콜백
   const onMessage = (msg) => {
-    console.log("onMessage", msg);
     // content가 JSON 문자열인 경우 파싱
     if (typeof msg.content === 'string' && msg.content.startsWith('{')) {
       try {
@@ -85,13 +85,14 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
     if (clientRef.current) {
       return;
     }
+    setIsChatLoading(true);
     const socket = new SockJS('/api/ws-chat');
     const stompClient = Stomp.over(socket);
     stompClient.connect({ Authorization: `Bearer ${localStorage.getItem('accessToken')}` }, () => {
       clientRef.current = stompClient;
       setIsChatOpen(true);
       setVisible(true);
-      setMessages([]);
+      
       stompClient.subscribe(`/topic/chat.${articleId}`, ({ body }) => {
         try {
           onMessage(JSON.parse(body));
@@ -100,16 +101,29 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
         }
       });
 
-      // 연결 직후 입장 메시지 전송
-      clientRef.current.send(`/app/chat.send`, {}, JSON.stringify({
-        articleId,
-        sender: "SYSTEM",
-        content: `${nickname}님이 입장하였습니다.`,
-        timestamp: new Date().toISOString(),
-        messageType: CHAT_MESSAGE_TYPE.JOIN
-      }));
+      // 구독 완료 후 과거 채팅 내역 불러오기
+      fetchChatMessages(articleId)
+        .then(chatHistory => {
+          if (chatHistory.data.items.length > 0) {
+            setMessages(chatHistory.data.items);
+          }
+          // 과거 채팅 내역 로딩 완료 후 입장 메시지 전송
+          clientRef.current.send(`/app/chat.send`, {}, JSON.stringify({
+            articleId,
+            sender: "SYSTEM",
+            content: `${nickname}님이 입장하였습니다.`,
+            timestamp: new Date().toISOString(),
+            messageType: CHAT_MESSAGE_TYPE.JOIN
+          }));
+          setIsChatLoading(false);
+        })
+        .catch(error => {
+          console.error("채팅 내역 로딩 실패:", error);
+          setIsChatLoading(false);
+        });
     }, (error) => {
       console.error("채팅방 연결 실패:", error);
+      setIsChatLoading(false);
       onError(error);
     });
   };
@@ -157,9 +171,24 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
       {!visible ? (
         <button 
           onClick={openChat}
-          className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          disabled={isChatLoading}
+          className={`w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors ${
+            isChatLoading ? 'opacity-50 cursor-not-allowed' : ''
+          } flex items-center justify-center gap-2`}
         >
-          채팅방 참여
+          {isChatLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+              <span>연결 중...</span>
+            </>
+          ) : (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+              </svg>
+              <span>채팅방 참여</span>
+            </>
+          )}
         </button>
       ) : (
         <div className="h-full flex flex-col">
