@@ -4,7 +4,7 @@ import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { signUp } from '@/app/api/auth/auth';
+import { signUp, checkDuplicateAccount, checkDuplicateEmail, checkDuplicateNickname, verifyEmailCode } from '@/app/api/auth/auth';
 import { validateSignUpForm, validatePassword, validatePasswordConfirm, validateName, validateNickname, validateEmail, validateGender, validateBirthDate, validateAccount } from './signUpValidator';
 import PasswordToggleIcon from '@/components/icons/PasswordToggleIcon';
 
@@ -18,7 +18,11 @@ const SignupForm = () => {
     nickName: '',
     birthDay: '',
     gender: '',
-    email: ''
+    email: '',
+    emailLocal: '',
+    emailDomain: 'naver.com',
+    emailCode: '',
+    customEmailDomain: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -32,6 +36,38 @@ const SignupForm = () => {
     number: false,
     special: false
   });
+
+  const [duplicateChecks, setDuplicateChecks] = useState({
+    account: false,
+    email: false,
+    nickName: false
+  });
+
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(180);
+
+  useEffect(() => {
+    let timer;
+    if (showEmailVerification && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [showEmailVerification, timeLeft]);
+
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
 
   const toggleShowPassword = () => {
     setShowPassword(!showPassword);
@@ -66,10 +102,40 @@ const SignupForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    if (name === 'emailLocal') {
+      const domain = formData.emailDomain === '' ? formData.customEmailDomain : formData.emailDomain;
+      setFormData(prev => ({
+        ...prev,
+        emailLocal: value,
+        email: domain ? `${value}@${domain}` : '',
+      }));
+    } else if (name === 'emailDomain') {
+      if (value === '') {
+        setFormData(prev => ({
+          ...prev,
+          emailDomain: '',
+          email: formData.customEmailDomain ? `${formData.emailLocal}@${formData.customEmailDomain}` : '',
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          emailDomain: value,
+          customEmailDomain: '', // clear custom domain
+          email: formData.emailLocal ? `${formData.emailLocal}@${value}` : '',
+        }));
+      }
+    } else if (name === 'customEmailDomain') {
+      setFormData(prev => ({
+        ...prev,
+        customEmailDomain: value,
+        email: formData.emailLocal ? `${formData.emailLocal}@${value}` : '',
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
 
     // 실시간 유효성 검사
     const error = validateField(name, value);
@@ -97,6 +163,89 @@ const SignupForm = () => {
         passwordConfirm: error
       }));
     }
+
+    // 중복 검사 상태 초기화
+    if (name === 'account' || name === 'email' || name === 'nickName') {
+      setDuplicateChecks(prev => ({
+        ...prev,
+        [name]: false
+      }));
+      if (name === 'email') {
+        setEmailVerified(false);
+        setShowEmailVerification(false);
+      }
+    }
+  };
+
+  const handleCheckDuplicate = async (type) => {
+    const value = formData[type];
+    if (!value) {
+      setErrors(prev => ({
+        ...prev,
+        [type]: `${type === 'account' ? '아이디' : type === 'email' ? '이메일' : '닉네임'}를 입력해주세요.`
+      }));
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      switch (type) {
+        case 'account':
+          await checkDuplicateAccount(value);
+          break;
+        case 'email':
+          await checkDuplicateEmail(value);
+          setShowEmailVerification(true);
+          setTimeLeft(180);
+          break;
+        case 'nickName':
+          await checkDuplicateNickname(value);
+          break;
+      }
+      setDuplicateChecks(prev => ({
+        ...prev,
+        [type]: true
+      }));
+      setErrors(prev => ({
+        ...prev,
+        [type]: null
+      }));
+    } catch (error) {
+      setErrors(prev => ({
+        ...prev,
+        [type]: error.message
+      }));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!formData.emailCode) {
+      setErrors(prev => ({
+        ...prev,
+        emailCode: '인증 코드를 입력해주세요.'
+      }));
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await verifyEmailCode(formData.email, formData.emailCode);
+      setEmailVerified(true);
+      setShowEmailVerification(false);
+      setErrors(prev => ({
+        ...prev,
+        emailCode: null
+      }));
+    } catch (error) {
+      setErrors(prev => ({
+        ...prev,
+        emailCode: error.message
+      }));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -106,13 +255,36 @@ const SignupForm = () => {
     const validationErrors = validateSignUpForm(formData);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
-      console.log(validationErrors);
+      return;
+    }
+
+    // 중복 검사 확인
+    if (!duplicateChecks.account) {
+      setErrors(prev => ({
+        ...prev,
+        account: '아이디 중복 확인이 필요합니다.'
+      }));
+      return;
+    }
+
+    if (!duplicateChecks.nickName) {
+      setErrors(prev => ({
+        ...prev,
+        nickName: '닉네임 중복 확인이 필요합니다.'
+      }));
+      return;
+    }
+
+    if (!emailVerified) {
+      setErrors(prev => ({
+        ...prev,
+        email: '이메일 인증이 필요합니다.'
+      }));
       return;
     }
 
     setIsLoading(true);
     try {
-      // API 요청에 필요한 필드만 포함
       const signUpData = {
         account: formData.account,
         password: formData.password,
@@ -152,18 +324,30 @@ const SignupForm = () => {
           <form className="flex flex-col" onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-sm text-gray-700 mb-2">아이디</label>
-              <input
-                name="account"
-                type="text"
-                placeholder="아이디"
-                value={formData.account}
-                onChange={handleChange}
-                className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 w-full
-                  focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
-                  transition ease-in-out duration-150
-                  ${errors.account ? 'border-red-500' : ''}`}
-                disabled={isLoading}
-              />
+              <div className="flex space-x-2">
+                <input
+                  name="account"
+                  type="text"
+                  placeholder="아이디"
+                  value={formData.account}
+                  onChange={handleChange}
+                  className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 flex-1
+                    focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
+                    transition ease-in-out duration-150
+                    ${errors.account ? 'border-red-500' : ''}`}
+                  disabled={isLoading || duplicateChecks.account}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCheckDuplicate('account')}
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md
+                    hover:bg-gray-300 transition ease-in-out duration-150
+                    disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isLoading || duplicateChecks.account || !formData.account}
+                >
+                  {duplicateChecks.account ? '확인완료' : '중복확인'}
+                </button>
+              </div>
               <div className="h-5 mt-1">
                 {errors.account && (
                   <p className="text-sm text-red-500">{errors.account}</p>
@@ -275,18 +459,30 @@ const SignupForm = () => {
 
             <div className="mb-4">
               <label className="block text-sm text-gray-700 mb-2">닉네임</label>
-              <input
-                name="nickName"
-                type="text"
-                placeholder="닉네임"
-                value={formData.nickName}
-                onChange={handleChange}
-                className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 w-full
-                  focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
-                  transition ease-in-out duration-150
-                  ${errors.nickName ? 'border-red-500' : ''}`}
-                disabled={isLoading}
-              />
+              <div className="flex space-x-2">
+                <input
+                  name="nickName"
+                  type="text"
+                  placeholder="닉네임"
+                  value={formData.nickName}
+                  onChange={handleChange}
+                  className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 flex-1
+                    focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
+                    transition ease-in-out duration-150
+                    ${errors.nickName ? 'border-red-500' : ''}`}
+                  disabled={isLoading || duplicateChecks.nickName}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCheckDuplicate('nickName')}
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md
+                    hover:bg-gray-300 transition ease-in-out duration-150
+                    disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isLoading || duplicateChecks.nickName || !formData.nickName}
+                >
+                  {duplicateChecks.nickName ? '확인완료' : '중복확인'}
+                </button>
+              </div>
               <div className="h-5 mt-1">
                 {errors.nickName && (
                   <p className="text-sm text-red-500">{errors.nickName}</p>
@@ -351,18 +547,67 @@ const SignupForm = () => {
 
             <div className="mb-4">
               <label className="block text-sm text-gray-700 mb-2">이메일</label>
-              <input
-                name="email"
-                type="email"
-                placeholder="이메일"
-                value={formData.email}
-                onChange={handleChange}
-                className={`bg-gray-100 text-gray-900 border-0 rounded-md p-2 w-full
-                  focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
-                  transition ease-in-out duration-150
-                  ${errors.email ? 'border-red-500' : ''}`}
-                disabled={isLoading}
-              />
+              <div className="flex flex-1 flex-wrap gap-2">
+                <input
+                  name="emailLocal"
+                  type="text"
+                  placeholder="이메일"
+                  value={formData.emailLocal}
+                  onChange={handleChange}
+                  className={`${styles.inputBase} ${styles.flexInput} ${errors.email ? styles.errorBorder : ''}`}
+                  disabled={isLoading || emailVerified}
+                />
+                <span className="flex items-center text-gray-500">@</span>
+                <select
+                  name="emailDomain"
+                  value={formData.emailDomain}
+                  onChange={handleChange}
+                  className={`${styles.inputBase} ${styles.flexNone} ${errors.email ? styles.errorBorder : ''}`}
+                  disabled={isLoading || emailVerified}
+                >
+                  <option value="naver.com">naver.com</option>
+                  <option value="gmail.com">gmail.com</option>
+                  <option value="daum.net">daum.net</option>
+                  <option value="hanmail.net">hanmail.net</option>
+                  <option value="nate.com">nate.com</option>
+                  <option value="kakao.com">kakao.com</option>
+                  <option value="">직접입력</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleCheckDuplicate('email')}
+                  className={`${styles.button}`}
+                  disabled={isLoading || emailVerified || !formData.email}
+                >
+                  {emailVerified ? '인증완료' : '인증하기'}
+                </button>
+              </div>
+              {formData.emailDomain === '' && (
+                <div className="mt-2">
+                  <input
+                    name="customEmailDomain"
+                    type="text"
+                    placeholder="도메인 입력 (예: gmail.com)"
+                    value={formData.customEmailDomain}
+                    onChange={e => {
+                      const newDomain = e.target.value;
+                      const newEmail = newDomain ? `${formData.emailLocal}@${newDomain}` : '';
+                      setFormData(prev => ({
+                        ...prev,
+                        emailDomain: '',
+                        customEmailDomain: newDomain,
+                        email: newEmail
+                      }));
+                      setErrors(prev => ({
+                        ...prev,
+                        email: newDomain ? validateEmail(newEmail) : null
+                      }));
+                    }}
+                    className={`${styles.inputBase} ${styles.flexInput} ${errors.email ? styles.errorBorder : ''}`}
+                    disabled={isLoading || emailVerified}
+                  />
+                </div>
+              )}
               <div className="h-5 mt-1">
                 {errors.email && (
                   <p className="text-sm text-red-500">{errors.email}</p>
@@ -370,12 +615,64 @@ const SignupForm = () => {
               </div>
             </div>
 
+            {showEmailVerification && (
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm text-gray-700">인증 코드</label>
+                  <div className={`flex items-center space-x-1 ${timeLeft === 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span className="text-sm font-medium">{formatTime(timeLeft)}</span>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <input
+                    name="emailCode"
+                    type="text"
+                    placeholder="이메일로 전송된 인증 코드"
+                    value={formData.emailCode}
+                    onChange={handleChange}
+                    className="bg-gray-100 text-gray-900 border-0 rounded-md p-2 flex-1
+                      focus:outline-none focus:ring-1 focus:ring-[#0D6EFD]
+                      transition ease-in-out duration-150"
+                    disabled={isLoading || timeLeft === 0}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleVerifyEmail}
+                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md
+                      hover:bg-gray-300 transition ease-in-out duration-150
+                      disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isLoading || timeLeft === 0}
+                  >
+                    {isLoading ? '확인 중...' : timeLeft === 0 ? '시간 만료' : '확인'}
+                  </button>
+                </div>
+                <div className="h-5 mt-1">
+                  {errors.emailCode && (
+                    <p className="text-sm text-red-500">{errors.emailCode}</p>
+                  )}
+                </div>
+                {timeLeft === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleCheckDuplicate('email')}
+                    className="text-[#0E74F9] font-bold py-2 px-4 rounded-md mt-2
+                      hover:text-[#0D6EFD] transition ease-in-out duration-150"
+                  >
+                    인증 코드 다시 받기
+                  </button>
+                )}
+              </div>
+            )}
+
             <button
               type="submit"
               className="bg-[#0E74F9] text-white font-bold py-2 px-4 rounded-md mt-4
                 hover:bg-[#0D6EFD] transition ease-in-out duration-150
                 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
+              disabled={isLoading || !duplicateChecks.account || !duplicateChecks.nickName || !emailVerified}
             >
               {isLoading ? '회원가입 중...' : '회원가입'}
             </button>
@@ -387,5 +684,14 @@ const SignupForm = () => {
     </div>
   );
 };
+
+const styles = {
+  inputBase: "bg-gray-100 text-gray-900 border-0 rounded-md p-2 h-10 min-w-0 focus:outline-none focus:ring-1 focus:ring-[#0D6EFD] transition ease-in-out duration-150",
+  flexInput: "flex-1",
+  flexNone: "flex-none",
+  errorBorder: "border-red-500",
+  button: "bg-[#0E74F9] text-white font-bold px-3 rounded-md h-10 flex-none hover:bg-[#0D6EFD] transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed",
+};
+
 
 export default SignupForm; 
