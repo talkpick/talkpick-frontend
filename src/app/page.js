@@ -27,19 +27,27 @@ export default function HomePage() {
       
       // 1. Top Viewed News 가져오기 (나중에는 Hot News도 추가)
       const topNews = await getTopViewedNews("all");
-      // console.log(topNews);
       const carouselGroups = [];
 
       if (topNews.data) {
         const mainNews = topNews.data;
         console.log(mainNews);
-        const similarNewsData = await getSimilarNews(mainNews.guid);
-        console.log(similarNewsData);
-        
-        carouselGroups.push({
-          mainNews,
-          relatedNews: similarNewsData.data?.newsSearchResponseList.slice(1, 4) || []
-        });
+        try {
+          const similarNewsData = await getSimilarNews(mainNews.guid);
+          console.log(similarNewsData);
+          
+          carouselGroups.push({
+            mainNews,
+            relatedNews: similarNewsData.data?.newsSearchResponseList.slice(1, 4) || []
+          });
+        } catch (similarError) {
+          // similar news 에러가 발생해도 main news는 표시
+          carouselGroups.push({
+            mainNews,
+            relatedNews: []
+          });
+          console.error('Similar news fetch error:', similarError);
+        }
       }
       console.log(carouselGroups);
 
