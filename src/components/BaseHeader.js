@@ -38,7 +38,7 @@ const BaseHeader = ({ children }) => {
             {accessToken ? (
               <>
                 <Link
-                  href="/mypage"
+                  href="/user"
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   마이페이지
