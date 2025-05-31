@@ -19,6 +19,7 @@ export default function DashboardPage() {
     getScrapList()
       .then(data => {
         setScraps(data.data || []);
+
         const highlightMap = {};
         data.data?.forEach(item => {
           if (item.highlights && item.highlights.length > 0) {
@@ -33,6 +34,7 @@ export default function DashboardPage() {
         setLoading(false);
       });
   }, []);
+
 
   const parseContent = (content, highlights) => {
     const renderText = (text, key = 0) => {
@@ -62,6 +64,7 @@ export default function DashboardPage() {
       return renderText(content);
     }
   };
+
 
   const getHighlightedTexts = (content, newsId) => {
     const itemHighlights = highlights[newsId];
@@ -113,6 +116,7 @@ export default function DashboardPage() {
       <Footer />
     </>
   );
+
 
   return (
     <>
@@ -210,6 +214,7 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+
         </div>
       </div>
 
