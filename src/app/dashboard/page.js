@@ -72,19 +72,20 @@ export default function DashboardPage() {
 
     try {
       const paragraphs = JSON.parse(content);
-      const firstHighlight = itemHighlights[0];
-      const paragraph = paragraphs[firstHighlight.paragraphIndex];
+      const highlightedTexts = [];
       
-      if (!paragraph) return null;
+      // 모든 하이라이트 처리
+      itemHighlights.forEach(highlight => {
+        const paragraph = paragraphs[highlight.paragraphIndex];
+        if (paragraph) {
+          const text = paragraph.slice(highlight.start, highlight.end);
+          if (text.length > 0) {
+            highlightedTexts.push(text);
+          }
+        }
+      });
 
-      // 같은 문단 내의 모든 하이라이트 찾기
-      const paragraphHighlights = itemHighlights.filter(h => h.paragraphIndex === firstHighlight.paragraphIndex);
-      
-      // 하이라이트된 텍스트들을 추출
-      return paragraphHighlights
-        .map(h => paragraph.slice(h.start, h.end))
-        .filter(text => text.length > 0)
-        .slice(0, 2); // 최대 2개의 하이라이트만 표시
+      return highlightedTexts.slice(0, 3); // 최대 3개의 하이라이트 표시
     } catch (error) {
       console.error('하이라이트 텍스트 추출 중 오류:', error);
       return null;
