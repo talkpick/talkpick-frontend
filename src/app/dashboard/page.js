@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { getScrapList } from '@/app/api/dashboard/scrapListApi';
-import SelectableText from '@/components/SelectableText';
 import HighlightedText from '@/components/HighlightedText';
 
 const ITEMS_PER_PAGE = 6;
@@ -20,6 +19,14 @@ export default function DashboardPage() {
     getScrapList()
       .then(data => {
         setScraps(data.data || []);
+
+        const highlightMap = {};
+        data.data?.forEach(item => {
+          if (item.highlights && item.highlights.length > 0) {
+            highlightMap[item.newsId] = item.highlights;
+          }
+        });
+        setHighlights(highlightMap);
         setLoading(false);
       })
       .catch(() => {
@@ -27,7 +34,6 @@ export default function DashboardPage() {
         setLoading(false);
       });
   }, []);
-
 
 
   const parseContent = (content, highlights) => {
@@ -59,6 +65,32 @@ export default function DashboardPage() {
     }
   };
 
+
+  const getHighlightedTexts = (content, newsId) => {
+    const itemHighlights = highlights[newsId];
+    if (!itemHighlights || itemHighlights.length === 0) return null;
+
+    try {
+      const paragraphs = JSON.parse(content);
+      const firstHighlight = itemHighlights[0];
+      const paragraph = paragraphs[firstHighlight.paragraphIndex];
+      
+      if (!paragraph) return null;
+
+      // 같은 문단 내의 모든 하이라이트 찾기
+      const paragraphHighlights = itemHighlights.filter(h => h.paragraphIndex === firstHighlight.paragraphIndex);
+      
+      // 하이라이트된 텍스트들을 추출
+      return paragraphHighlights
+        .map(h => paragraph.slice(h.start, h.end))
+        .filter(text => text.length > 0)
+        .slice(0, 2); // 최대 2개의 하이라이트만 표시
+    } catch (error) {
+      console.error('하이라이트 텍스트 추출 중 오류:', error);
+      return null;
+    }
+  };
+
   const totalPages = useMemo(
     () => Math.ceil(scraps.length / ITEMS_PER_PAGE),
     [scraps.length]
@@ -85,55 +117,104 @@ export default function DashboardPage() {
     </>
   );
 
+
   return (
     <>
       <Header />
-      <div className="max-w-3xl mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">내 스크랩</h1>
+      <div className="container mx-auto px-4">
+        <div className="py-12">
+          <h1 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
+            <span className="text-blue-500 text-3xl"># </span>내가 저장한 뉴스
+          </h1>
 
-        <div className="grid grid-cols-2 gap-4">
-          {visibleScraps.map(item => (
-            <article key={item.newsId} className="rounded-lg overflow-hidden hover:shadow-lg hover:border-1 hover:border-[#0E74F9]">
-              {item.imageUrl && (
-                <img src={item.imageUrl} alt={item.title} className="w-full h-32 object-cover" />
-              )}
-              <div className="p-3">
-                <h2 className="font-semibold text-lg mb-1">{item.title}</h2>
-                <p className="text-sm text-gray-500 mb-2">
-                  {new Date(item.publishDate).toLocaleDateString()} · {item.category}
-                </p>
-                <p className="text-sm line-clamp-3 mb-2">{item.summary}</p>
+          <div className="grid grid-cols-2 gap-4">
+            {visibleScraps.map(item => (
+              <article 
+                key={item.newsId} 
+                className="rounded-lg overflow-hidden hover:shadow-lg border border-transparent hover:border-[#0E74F9] cursor-pointer"
+                onClick={() => setSelectedNews(item)}
+              >
+                {item.imageUrl && (
+                  <img src={item.imageUrl} alt={item.title} className="w-full h-32 object-cover" />
+                )}
+                <div className="p-3">
+                  <h2 className="font-semibold text-lg mb-1">{item.title}</h2>
+                  <p className="text-sm text-gray-500 mb-2">
+                    {new Date(item.publishDate).toLocaleDateString()} · {item.category}
+                  </p>
+                  {getHighlightedTexts(item.content, item.newsId) ? (
+                    <div className="space-y-2 mb-2">
+                      {getHighlightedTexts(item.content, item.newsId).map((text, index) => (
+                        <div key={index} className="relative bg-blue-100 rounded-lg p-2 text-sm">
+                          <div className="absolute -top-2 left-4 w-4 h-4 bg-blue-100 transform rotate-45"></div>
+                          <p className="text-gray-800 font-medium">{text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm line-clamp-3 text-gray-500">
+                      {item.summary}
+                    </p>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {/* 페이지네이션 개선 */}
+          {scraps.length > 0 && (
+            <div className="flex justify-center mt-8 mb-4 gap-2">
+              {/* 이전 페이지 버튼 */}
+              {currentPage > 1 && (
                 <button
-                  onClick={() => setSelectedNews(item)}
-                  className="text-[#0E74F9] text-sm hover:underline"
+                  onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                  className="px-3 py-1 rounded bg-white text-gray-600 hover:bg-gray-100"
                 >
-                  상세보기 →
+                  &lt;
                 </button>
-              </div>
-            </article>
-          ))}
-        </div>
+              )}
 
-        <div className="flex justify-center items-center space-x-4 mt-6">
-          <button
-            onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            이전
-          </button>
+              {/* 페이지 번호 버튼 */}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
 
-          <span>
-            {currentPage} / {totalPages}
-          </span>
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
 
-          <button
-            onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            다음
-          </button>
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-3 py-1 rounded ${
+                      pageNum === currentPage
+                        ? 'bg-[#0E74F9] text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+
+              {/* 다음 페이지 버튼 */}
+              {currentPage < totalPages && (
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                  className="px-3 py-1 rounded bg-white text-gray-600 hover:bg-gray-100"
+                >
+                  &gt;
+                </button>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 

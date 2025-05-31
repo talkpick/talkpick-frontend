@@ -14,13 +14,15 @@ export default function NewsList({ news, hasNext, onLoadMore, isLoading }) {
           className="block bg-white p-4 rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-[#0E74F9]"
         >
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="w-full md:w-[200px] md:flex-shrink-0">
-              <img 
-                src={item.imageUrl} 
-                alt={item.title}
-                className="w-full h-[150px] object-cover rounded-lg"
-              />
-            </div>
+            {item.imageUrl && (
+              <div className="w-full md:w-[200px] md:flex-shrink-0">
+                <img 
+                  src={item.imageUrl} 
+                  alt={item.title}
+                  className="w-full h-[150px] object-cover rounded-lg"
+                />
+              </div>
+            )}
             <div className="flex-grow">
               <h3 className="text-lg font-semibold mb-2 hover:text-[#0E74F9] transition-colors">
                 {parse(item.title)}

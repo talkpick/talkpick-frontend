@@ -39,7 +39,7 @@ export default function HighlightedText({ text, highlights, user=false }) {
           {
             key: i,
             style: {
-              backgroundColor: `rgba(160,110,255,${frag.opacity})`,
+              backgroundColor: `rgba(255,255,0,${frag.opacity})`,
               transition: 'background-color 0.3s'
             }
           },

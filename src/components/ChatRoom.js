@@ -105,7 +105,24 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
       fetchChatMessages(articleId)
         .then(chatHistory => {
           if (chatHistory.data.items.length > 0) {
-            setMessages(chatHistory.data.items);
+            // 이스케이프된 content 처리
+            const processedMessages = chatHistory.data.items.map(message => {
+              if (message.content.startsWith('{')) {
+                try {
+                  // 이스케이프된 문자열을 파싱
+                  const parsedContent = JSON.parse(message.content);
+                  return {
+                    ...message,
+                    content: parsedContent
+                  };
+                } catch (error) {
+                  console.error('Content 파싱 중 오류:', error);
+                  return message;
+                }
+              }
+              return message;
+            });
+            setMessages(processedMessages);
           }
           // 과거 채팅 내역 로딩 완료 후 입장 메시지 전송
           clientRef.current.send(`/app/chat.send`, {}, JSON.stringify({
