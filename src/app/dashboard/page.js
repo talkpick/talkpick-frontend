@@ -127,7 +127,7 @@ export default function DashboardPage() {
             {visibleScraps.map(item => (
               <article 
                 key={item.newsId} 
-                className="rounded-lg overflow-hidden hover:shadow-lg hover:border-1 hover:border-[#0E74F9] cursor-pointer"
+                className="rounded-lg overflow-hidden hover:shadow-lg border border-transparent hover:border-[#0E74F9] cursor-pointer"
                 onClick={() => setSelectedNews(item)}
               >
                 {item.imageUrl && (
