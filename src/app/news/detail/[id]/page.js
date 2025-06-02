@@ -108,13 +108,22 @@ const NewsDetailPage = () => {
     const socket = new SockJS(SOCKET_CONFIG.ENDPOINT);
     const client = Stomp.over(socket);
 
-    client.connect({type: SOCKET_CONNECTION_TYPE.PUBLIC}, () => {
-      // 인원 수 토픽 구독
-      client.subscribe(`/topic/chat.${params.id}.count`, ({ body }) => {
-        const { count } = JSON.parse(body);
-        setUserCount(count);
-      });
-    }, console.error);
+    client.connect(
+      {type: SOCKET_CONNECTION_TYPE.PUBLIC}, 
+      () => {
+        // 인원 수 토픽 구독
+        client.subscribe(`/topic/chat.${params.id}.count`, ({ body }) => {
+          const { count } = JSON.parse(body);
+          setUserCount(count);
+        });
+        // 채팅 인원 수 초기화
+        client.send(
+          `/app/chat.initCount.${params.id}`,
+          {},
+          ""
+        );
+      }, console.error
+    );
 
     socketRef.current = client;
 
