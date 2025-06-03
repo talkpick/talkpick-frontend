@@ -16,7 +16,7 @@ import { refreshAccessToken } from '@/lib/axios';
  * - 버튼 클릭 시 WebSocket 연결 후 채팅방 표시
  * - 퇴장 버튼으로 연결 해제
  */
-function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, selectedQuote, setSelectedQuote, onQuoteClick, isChatLoading, setIsChatLoading }) {
+function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIsChatOpen, selectedQuote, setSelectedQuote, onQuoteClick, isChatLoading, setIsChatLoading }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -30,13 +30,10 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
   
   const scrollToBottom = () => {
     if (isPcVersion) {
-      // PC 버전에서는 채팅 컨테이너가 가득 찼을 때만 스크롤
+      // PC 버전에서도 항상 스크롤을 하단으로 이동
       const container = chatContainerRef.current;
       if (container) {
-        const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 150;
-        if (isScrolledToBottom) {
-          container.scrollTop = container.scrollHeight;
-        }
+        container.scrollTop = container.scrollHeight;
       }
     } else {
       // 모바일 버전에서는 기존처럼 페이지 스크롤
@@ -162,13 +159,17 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
   // 메시지 구독 설정
   const subscribeToChat = (stompClient) => {
     return new Promise((resolve) => {
-      stompClient.subscribe(`/topic/chat.${articleId}`, ({ body }) => {
-        try {
-          onMessage(JSON.parse(body));
-        } catch (error) {
-          console.error("메시지 파싱 오류:", error);
-        }
-      });
+      stompClient.subscribe(
+        `/topic/chat.${articleId}`,
+        ({ body }) => {
+          try {
+            onMessage(JSON.parse(body));
+          } catch (error) {
+            console.error("메시지 파싱 오류:", error);
+          }
+        },
+        { category: category }  // 헤더에 카테고리 정보 추가
+      );
       resolve(stompClient);
     });
   };

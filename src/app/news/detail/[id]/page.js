@@ -89,6 +89,8 @@ const NewsDetailPage = () => {
       };
       
       setNews(newsData);
+      console.log('Category from API:', data.category);
+      console.log('Category ID after conversion:', getCategoryId(data.category));
       setSelectedCategory(getCategoryId(data.category));
       setHighlightSegments(data.highlightSegments || []);
     } catch (error) {
@@ -119,7 +121,7 @@ const NewsDetailPage = () => {
 
   const subscribeToChat = (client) => {
     return new Promise((resolve) => {
-      client.subscribe(`/topic/chat.${params.id}.count`, ({ body }) => {
+      client.subscribe(`/topic/chat.${selectedCategory}:${params.id}.count`, ({ body }) => {
         const { count } = JSON.parse(body);
         setUserCount(count);
       });
@@ -128,8 +130,10 @@ const NewsDetailPage = () => {
   };
 
   const initializeChatCount = (client) => {
+    const destination = `/app/chat.initCount.${selectedCategory}:${params.id}`;
+    console.log('Chat init destination:', destination);
     client.send(
-      `/app/chat.initCount.${params.id}`,
+      destination,
       {},
       ""
     );
@@ -171,7 +175,7 @@ const NewsDetailPage = () => {
   };
 
   useEffect(() => {
-    if (!params.id) return;
+    if (!params.id || !selectedCategory) return;
     if (socketRef.current) return;
 
     const initializeWebSocket = async () => {
@@ -194,7 +198,7 @@ const NewsDetailPage = () => {
         socketRef.current = null;
       }
     };
-  }, [params.id]);
+  }, [params.id, selectedCategory]);
 
   // 채팅 에러 핸들러 추가
   const handleChatError = (error) => {
@@ -458,6 +462,7 @@ const NewsDetailPage = () => {
                       <div className="flex-1 overflow-y-auto">
                         <ChatRoom 
                           articleId={params.id} 
+                          category={selectedCategory}
                           onError={handleChatError} 
                           isPcVersion={true}
                           isChatOpen={isChatOpen}
@@ -630,7 +635,8 @@ const NewsDetailPage = () => {
                   >
                     <div className="h-full pb-safe">
                       <ChatRoom 
-                        articleId={params.id} 
+                        articleId={params.id}
+                        category={selectedCategory} 
                         onError={handleChatError} 
                         isPcVersion={false}
                         isChatOpen={isChatOpen}
