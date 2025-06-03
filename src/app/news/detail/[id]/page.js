@@ -44,6 +44,16 @@ const NewsDetailPage = () => {
   const RECONNECT_DELAY = 5000; // 5초
   const [highlightSegments, setHighlightSegments] = useState([]);
 
+  // 하이라이트 정보 업데이트 함수
+  const updateHighlightSegments = async () => {
+    try {
+      const response = await getNewsDetail(params.id);
+      setHighlightSegments(response.data.highlightSegments || []);
+    } catch (error) {
+      console.error('하이라이트 정보 업데이트 실패:', error);
+    }
+  };
+
   // 인용구 클릭 시 해당 문단으로 스크롤 이동하는 함수
   const handleQuoteScroll = (paragraphIndex) => {
     const newsContent = document.getElementById('news-content');
@@ -472,6 +482,7 @@ const NewsDetailPage = () => {
                           onQuoteClick={handleQuoteScroll}
                           isChatLoading={isChatLoading}
                           setIsChatLoading={setIsChatLoading}
+                          onQuoteScrap={updateHighlightSegments}
                         />
                       </div>
                     </div>
@@ -646,6 +657,7 @@ const NewsDetailPage = () => {
                         onQuoteClick={handleQuoteScroll}
                         isChatLoading={isChatLoading}
                         setIsChatLoading={setIsChatLoading}
+                        onQuoteScrap={updateHighlightSegments}
                       />
                     </div>
                   </div>
