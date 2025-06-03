@@ -8,6 +8,7 @@ import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { scrapQuote } from '@/app/api/chat/quote';
 import { fetchChatMessages } from '@/app/api/chat/chatLoadingApi';
+import { refreshAccessToken } from '@/lib/axios';
 
 /**
  * ChatRoom 컴포넌트
@@ -23,6 +24,9 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
   const clientRef = useRef(null);
   const chatContainerRef = useRef(null);
   const [visible, setVisible] = useState(false);
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 3;
+  const RECONNECT_DELAY = 5000; // 5초
   
   const scrollToBottom = () => {
     if (isPcVersion) {
@@ -80,19 +84,84 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
     setMessages(prev => [...prev, msg]);
   };
 
-  // 채팅방 열기
-  const openChat = async () => {
-    if (clientRef.current) {
-      return;
-    }
-    setIsChatLoading(true);
-    const socket = new SockJS('/api/ws-chat');
-    const stompClient = Stomp.over(socket);
-    stompClient.connect({ Authorization: `Bearer ${localStorage.getItem('accessToken')}` }, () => {
-      clientRef.current = stompClient;
-      setIsChatOpen(true);
-      setVisible(true);
+  // WebSocket 연결 설정
+  const connectWebSocket = () => {
+    return new Promise((resolve, reject) => {
+      const socket = new SockJS('/api/ws-chat');
+      const stompClient = Stomp.over(socket);
       
+      stompClient.connect(
+        { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
+        () => resolve(stompClient),
+        (error) => reject(error)
+      );
+    });
+  };
+
+  // WebSocket 재연결
+  const reconnectWebSocket = async () => {
+    try {
+      const stompClient = await connectWebSocket();
+      clientRef.current = stompClient;
+      setupConnectionCloseHandler(stompClient);
+      await subscribeToChat(stompClient);
+      reconnectAttemptsRef.current = 0;
+      console.log("WebSocket 재연결 성공");
+    } catch (error) {
+      console.error("WebSocket 재연결 실패:", error);
+      closeChatRoom();
+      throw error;
+    }
+  };
+
+  // 채팅방 닫기
+  const closeChatRoom = () => {
+    if (clientRef.current) {
+      clientRef.current = null;
+    }
+    setIsChatOpen(false);
+    setVisible(false);
+    setMessages([]);
+  };
+
+  // 연결 종료 핸들러 설정
+  const setupConnectionCloseHandler = (stompClient) => {
+    stompClient.onWebSocketClose = (event) => {
+      console.log("WebSocket 연결이 종료되었습니다.", event);
+      
+      if (event.code === 1002) {
+        // 의도하지 않은 연결 종료 처리
+        console.log("의도하지 않은 연결 종료 (code: 1002)");
+        if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttemptsRef.current += 1;
+          console.log(`재연결 시도 ${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS}`);
+          
+          setTimeout(async () => {
+            try {
+              await reconnectWebSocket();
+            } catch (error) {
+              console.error("재연결 실패:", error);
+              if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+                onError(new Error("연결이 불안정합니다. 페이지를 새로고침해주세요."));
+                closeChatRoom();
+              }
+            }
+          }, RECONNECT_DELAY);
+        } else {
+          onError(new Error("연결이 불안정합니다. 페이지를 새로고침해주세요."));
+          closeChatRoom();
+        }
+      } else {
+        // 의도적인 연결 종료 처리
+        console.log("의도적인 연결 종료 (code:", event.code, ")");
+        closeChatRoom();
+      }
+    };
+  };
+
+  // 메시지 구독 설정
+  const subscribeToChat = (stompClient) => {
+    return new Promise((resolve) => {
       stompClient.subscribe(`/topic/chat.${articleId}`, ({ body }) => {
         try {
           onMessage(JSON.parse(body));
@@ -100,49 +169,87 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
           console.error("메시지 파싱 오류:", error);
         }
       });
-
-      // 구독 완료 후 과거 채팅 내역 불러오기
-      fetchChatMessages(articleId)
-        .then(chatHistory => {
-          if (chatHistory.data.items.length > 0) {
-            // 이스케이프된 content 처리
-            const processedMessages = chatHistory.data.items.map(message => {
-              if (message.content.startsWith('{')) {
-                try {
-                  // 이스케이프된 문자열을 파싱
-                  const parsedContent = JSON.parse(message.content);
-                  return {
-                    ...message,
-                    content: parsedContent
-                  };
-                } catch (error) {
-                  console.error('Content 파싱 중 오류:', error);
-                  return message;
-                }
-              }
-              return message;
-            });
-            setMessages(processedMessages);
-          }
-          // 과거 채팅 내역 로딩 완료 후 입장 메시지 전송
-          clientRef.current.send(`/app/chat.send`, {}, JSON.stringify({
-            articleId,
-            sender: "SYSTEM",
-            content: `${nickname}님이 입장하였습니다.`,
-            timestamp: new Date().toISOString(),
-            messageType: CHAT_MESSAGE_TYPE.JOIN
-          }));
-          setIsChatLoading(false);
-        })
-        .catch(error => {
-          console.error("채팅 내역 로딩 실패:", error);
-          setIsChatLoading(false);
-        });
-    }, (error) => {
-      console.error("채팅방 연결 실패:", error);
-      setIsChatLoading(false);
-      onError(error);
+      resolve(stompClient);
     });
+  };
+
+  // 과거 메시지 처리
+  const processChatHistory = async (stompClient) => {
+    try {
+      const chatHistory = await fetchChatMessages(articleId);
+      if (chatHistory.data.items.length > 0) {
+        const processedMessages = chatHistory.data.items.map(message => {
+          if (message.content.startsWith('{')) {
+            try {
+              const parsedContent = JSON.parse(message.content);
+              return {
+                ...message,
+                content: parsedContent
+              };
+            } catch (error) {
+              console.error('Content 파싱 중 오류:', error);
+              return message;
+            }
+          }
+          return message;
+        });
+        setMessages(processedMessages);
+      }
+      return stompClient;
+    } catch (error) {
+      console.error("채팅 내역 로딩 실패:", error);
+      throw error;
+    }
+  };
+
+  // 입장 메시지 전송
+  const sendJoinMessage = (stompClient) => {
+    return new Promise((resolve) => {
+      stompClient.send(`/app/chat.send`, {}, JSON.stringify({
+        articleId,
+        sender: "SYSTEM",
+        content: `${nickname}님이 입장하였습니다.`,
+        timestamp: new Date().toISOString(),
+        messageType: CHAT_MESSAGE_TYPE.JOIN
+      }));
+      resolve(stompClient);
+    });
+  };
+
+  // 채팅방 열기
+  const openChat = async () => {
+    if (clientRef.current) {
+      return;
+    }
+    setIsChatLoading(true);
+    
+    try {
+      // 0. Access Token 갱신
+      await refreshAccessToken();
+      // 1. WebSocket 연결
+      const stompClient = await connectWebSocket();
+      clientRef.current = stompClient;
+      setIsChatOpen(true);
+      setVisible(true);
+
+      // 2. 연결 종료 핸들러 설정
+      setupConnectionCloseHandler(stompClient);
+
+      // 3. 채팅 구독
+      await subscribeToChat(stompClient);
+
+      // 4. 과거 채팅 내역 로드 및 처리
+      await processChatHistory(stompClient);
+
+      // 5. 입장 메시지 전송
+      await sendJoinMessage(stompClient);
+
+    } catch (error) {
+      console.error("채팅방 초기화 실패:", error);
+      onError(error);
+    } finally {
+      setIsChatLoading(false);
+    }
   };
 
   // 채팅방 나가기
@@ -156,11 +263,8 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
         messageType: CHAT_MESSAGE_TYPE.LEAVE
       }));
       clientRef.current.disconnect();
-      clientRef.current = null;
+      closeChatRoom();
     }
-    setIsChatOpen(false);
-    setVisible(false);
-    setMessages([]);
   };
 
   // 인용구 클릭 핸들러
@@ -170,11 +274,13 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
     }
   };
 
-  // 채팅방 연결관리
+  // 컴포넌트 언마운트 시 정리
   useEffect(() => {
     return () => {
-      // 연결 해제
-      if (clientRef.current) clientRef.current.disconnect();
+      if (clientRef.current) {
+        clientRef.current.disconnect();
+        closeChatRoom();
+      }
     };
   }, []);
 

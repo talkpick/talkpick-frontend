@@ -39,6 +39,9 @@ const NewsDetailPage = () => {
   const [showErrorToast, setShowErrorToast] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const socketRef = useRef(null);
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 3;
+  const RECONNECT_DELAY = 5000; // 5초
   const [highlightSegments, setHighlightSegments] = useState([]);
 
   // 인용구 클릭 시 해당 문단으로 스크롤 이동하는 함수
@@ -101,34 +104,91 @@ const NewsDetailPage = () => {
     fetchNewsDetail();
   }, [params.id]);
 
+  const connectWebSocket = () => {
+    return new Promise((resolve, reject) => {
+      const socket = new SockJS(SOCKET_CONFIG.ENDPOINT);
+      const client = Stomp.over(socket);
+
+      client.connect(
+        { type: SOCKET_CONNECTION_TYPE.PUBLIC },
+        () => resolve(client),
+        (error) => reject(error)
+      );
+    });
+  };
+
+  const subscribeToChat = (client) => {
+    return new Promise((resolve) => {
+      client.subscribe(`/topic/chat.${params.id}.count`, ({ body }) => {
+        const { count } = JSON.parse(body);
+        setUserCount(count);
+      });
+      resolve(client);
+    });
+  };
+
+  const initializeChatCount = (client) => {
+    client.send(
+      `/app/chat.initCount.${params.id}`,
+      {},
+      ""
+    );
+  };
+
+  const setupConnectionCloseHandler = (client) => {
+    client.onWebSocketClose = (event) => {
+      console.log("WebSocket 연결이 종료되었습니다.", event);
+      
+      if (event.code === 1002) {
+        console.log("의도하지 않은 연결 종료 (code: 1002), 재연결 시도");
+        
+        if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttemptsRef.current += 1;
+          console.log(`재연결 시도 ${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS}`);
+          
+          setTimeout(async () => {
+            try {
+              const newClient = await connectWebSocket();
+              await subscribeToChat(newClient);
+              initializeChatCount(newClient);
+              setupConnectionCloseHandler(newClient);
+              socketRef.current = newClient;
+              reconnectAttemptsRef.current = 0; // 재연결 성공 시 카운트 초기화
+            } catch (error) {
+              console.error("WebSocket 재연결 실패:", error);
+              if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+                setErrorMessage('연결이 불안정합니다. 페이지를 새로고침해주세요.');
+                setShowErrorToast(true);
+              }
+            }
+          }, RECONNECT_DELAY);
+        } else {
+          setErrorMessage('연결이 불안정합니다. 페이지를 새로고침해주세요.');
+          setShowErrorToast(true);
+        }
+      }
+    };
+  };
+
   useEffect(() => {
     if (!params.id) return;
     if (socketRef.current) return;
-    // SockJS + STOMP 클라이언트 생성
-    const socket = new SockJS(SOCKET_CONFIG.ENDPOINT);
-    const client = Stomp.over(socket);
 
-    client.connect(
-      {type: SOCKET_CONNECTION_TYPE.PUBLIC}, 
-      () => {
-        // 인원 수 토픽 구독
-        client.subscribe(`/topic/chat.${params.id}.count`, ({ body }) => {
-          const { count } = JSON.parse(body);
-          setUserCount(count);
-        });
-        // 채팅 인원 수 초기화
-        client.send(
-          `/app/chat.initCount.${params.id}`,
-          {},
-          ""
-        );
-      }, console.error
-    );
+    const initializeWebSocket = async () => {
+      try {
+        const client = await connectWebSocket();
+        await subscribeToChat(client);
+        initializeChatCount(client);
+        setupConnectionCloseHandler(client);
+        socketRef.current = client;
+      } catch (error) {
+        console.error("WebSocket 초기 연결 실패:", error);
+      }
+    };
 
-    socketRef.current = client;
+    initializeWebSocket();
 
     return () => {
-      // cleanup: 모든 구독 해제하고 연결 종료
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -139,7 +199,7 @@ const NewsDetailPage = () => {
   // 채팅 에러 핸들러 추가
   const handleChatError = (error) => {
     console.log(error);
-    setErrorMessage('채팅 서비스 연결에 실패했습니다.');
+    setErrorMessage('채팅 서비스 연결에 실패했습니다. 페이지 새로고침 후에 다시 시도해주세요.');
     setShowErrorToast(true);
     setIsChatOpen(false);
     setIsChatLoading(false);
