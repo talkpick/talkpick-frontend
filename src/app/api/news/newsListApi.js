@@ -30,3 +30,13 @@ export async function getSimilarNews(newsId) {
   const response = await refreshAxios.get(`/api/public/news/similar?newsId=${newsId}&page=0&size=4`);
   return response.data;
 }
+
+export async function getChatHotNews(category) {
+  const response = await refreshAxios.get(`/api/public/chat/top-news/${category}`);
+  return response.data;
+}
+
+export async function getChatHotNewsAll() {
+  const response = await refreshAxios.get(`/api/public/chat/top-news`);
+  return response.data;
+}

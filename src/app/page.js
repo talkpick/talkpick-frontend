@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getLatestNews, getTopViewedNews, getSimilarNews } from '@/app/api/news/newsListApi';
+import { getLatestNews, getTopViewedNews, getSimilarNews, getChatHotNewsAll } from '@/app/api/news/newsListApi';
 import NewsList from '@/components/news/NewsList';
 import NewsCarousel from '@/components/news/NewsCarousel';
 import Header from '@/components/Header';
@@ -25,23 +25,22 @@ export default function HomePage() {
     try {
       setCarouselLoading(true);
       
-      // 1. Top Viewed News 가져오기 (나중에는 Hot News도 추가)
+      // 1. Top Viewed News 가져오기
       const topNews = await getTopViewedNews("all");
+      // 2. Chat Hot News 가져오기
+      const chatHotNewsData = await getChatHotNewsAll();
       const carouselGroups = [];
-
+      
       if (topNews.data) {
         const mainNews = topNews.data;
-        console.log(mainNews);
         try {
           const similarNewsData = await getSimilarNews(mainNews.guid);
-          console.log(similarNewsData);
           
           carouselGroups.push({
             mainNews,
             relatedNews: similarNewsData.data?.newsSearchResponseList.slice(1, 4) || []
           });
         } catch (similarError) {
-          // similar news 에러가 발생해도 main news는 표시
           carouselGroups.push({
             mainNews,
             relatedNews: []
@@ -49,8 +48,26 @@ export default function HomePage() {
           console.error('Similar news fetch error:', similarError);
         }
       }
-      console.log(carouselGroups);
 
+      // Chat Hot News 추가
+      if (chatHotNewsData) {
+        const chatHotMainNews = chatHotNewsData;
+        try {
+          const similarNewsData = await getSimilarNews(chatHotMainNews.guid);
+          
+          carouselGroups.push({
+            mainNews: chatHotMainNews,
+            relatedNews: similarNewsData.data?.newsSearchResponseList.slice(1, 4) || []
+          });
+        } catch (similarError) {
+          carouselGroups.push({
+            mainNews: chatHotMainNews,
+            relatedNews: []
+          });
+          console.error('Similar news fetch error for chat hot news:', similarError);
+        }
+      }
+      console.log(carouselGroups);
       setCarouselNews(carouselGroups);
     } catch (err) {
       setError(err.message);
