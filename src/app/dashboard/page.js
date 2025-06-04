@@ -8,6 +8,13 @@ import HighlightedText from '@/components/HighlightedText';
 
 const ITEMS_PER_PAGE = 6;
 
+// 이미지 URL에서 사이즈 정보 제거하는 함수
+const removeImageSize = (url) => {
+  if (!url) return url;
+  // /i/숫자/숫자/숫자 패턴을 찾아서 제거
+  return url.replace(/\/i\/\d+\/\d+\/\d+/, '');
+};
+
 export default function DashboardPage() {
   const [scraps, setScraps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -136,7 +143,13 @@ export default function DashboardPage() {
                 onClick={() => setSelectedNews(item)}
               >
                 {item.imageUrl && (
-                  <img src={item.imageUrl} alt={item.title} className="w-full h-32 object-cover" />
+                  <div className="relative w-full aspect-[16/9]">
+                    <img 
+                      src={removeImageSize(item.imageUrl)} 
+                      alt={item.title} 
+                      className="w-full h-full object-contain bg-gray-50" 
+                    />
+                  </div>
                 )}
                 <div className="p-3">
                   <h2 className="font-semibold text-lg mb-1">{item.title}</h2>
@@ -235,7 +248,7 @@ export default function DashboardPage() {
               </div>
               {selectedNews.imageUrl && (
                 <img
-                  src={selectedNews.imageUrl}
+                  src={removeImageSize(selectedNews.imageUrl)}
                   alt={selectedNews.title}
                   className="w-full h-64 object-cover rounded-lg mb-4"
                 />

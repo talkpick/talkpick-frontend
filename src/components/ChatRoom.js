@@ -16,9 +16,10 @@ import { refreshAccessToken } from '@/lib/axios';
  * - 버튼 클릭 시 WebSocket 연결 후 채팅방 표시
  * - 퇴장 버튼으로 연결 해제
  */
-function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, selectedQuote, setSelectedQuote, onQuoteClick, isChatLoading, setIsChatLoading }) {
+function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIsChatOpen, selectedQuote, setSelectedQuote, onQuoteClick, isChatLoading, setIsChatLoading, onQuoteScrap }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [isScrapLoading, setIsScrapLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const { nickname } = useContext(AuthContext);
   const clientRef = useRef(null);
@@ -30,13 +31,10 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
   
   const scrollToBottom = () => {
     if (isPcVersion) {
-      // PC 버전에서는 채팅 컨테이너가 가득 찼을 때만 스크롤
+      // PC 버전에서도 항상 스크롤을 하단으로 이동
       const container = chatContainerRef.current;
       if (container) {
-        const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 150;
-        if (isScrolledToBottom) {
-          container.scrollTop = container.scrollHeight;
-        }
+        container.scrollTop = container.scrollHeight;
       }
     } else {
       // 모바일 버전에서는 기존처럼 페이지 스크롤
@@ -45,7 +43,7 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
   };
 
   const send = () => {
-    if (!input.trim() || !clientRef.current) return;
+    if (!input.trim() || !clientRef.current || isScrapLoading) return;
 
     // 메시지 데이터 구성
     const messageData = {
@@ -64,9 +62,25 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
         : input.trim()
     };
     clientRef.current.send(`/app/chat.send`, {}, JSON.stringify(messageData));
+    
+    // 인용구가 있는 경우에만 비동기 처리
     if(selectedQuote) {
-      scrapQuote(articleId, selectedQuote);
-    } 
+      setIsScrapLoading(true);
+      const handleScrap = async () => {
+        try {
+          await scrapQuote(articleId, selectedQuote);
+          if (onQuoteScrap) {
+            onQuoteScrap();
+          }
+        } catch (error) {
+          console.error('Error in scrap quote:', error);
+        } finally {
+          setIsScrapLoading(false);
+        }
+      };
+      handleScrap();
+    }
+    
     setInput('');
     setSelectedQuote(null);
   };
@@ -162,13 +176,17 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
   // 메시지 구독 설정
   const subscribeToChat = (stompClient) => {
     return new Promise((resolve) => {
-      stompClient.subscribe(`/topic/chat.${articleId}`, ({ body }) => {
-        try {
-          onMessage(JSON.parse(body));
-        } catch (error) {
-          console.error("메시지 파싱 오류:", error);
-        }
-      });
+      stompClient.subscribe(
+        `/topic/chat.${articleId}`,
+        ({ body }) => {
+          try {
+            onMessage(JSON.parse(body));
+          } catch (error) {
+            console.error("메시지 파싱 오류:", error);
+          }
+        },
+        { category: category }  // 헤더에 카테고리 정보 추가
+      );
       resolve(stompClient);
     });
   };
@@ -397,6 +415,7 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
                 <button
                   onClick={() => setSelectedQuote(null)}
                   className="shrink-0 text-gray-400 hover:text-gray-600"
+                  disabled={isScrapLoading}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -410,14 +429,27 @@ function ChatRoom({ articleId, onError, isPcVersion, isChatOpen, setIsChatOpen, 
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-                className="flex-1 min-w-0 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
-                placeholder="메시지를 입력하세요..."
+                className={`flex-1 min-w-0 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base ${
+                  isScrapLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                placeholder={isScrapLoading ? "인용구 저장 중..." : "메시지를 입력하세요..."}
+                disabled={isScrapLoading}
               />
               <button 
                 onClick={send}
-                className="shrink-0 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                disabled={isScrapLoading}
+                className={`shrink-0 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors ${
+                  isScrapLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                전송
+                {isScrapLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <span>저장 중...</span>
+                  </div>
+                ) : (
+                  '전송'
+                )}
               </button>
             </div>
           </div>

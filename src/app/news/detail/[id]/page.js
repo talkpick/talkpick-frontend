@@ -44,6 +44,16 @@ const NewsDetailPage = () => {
   const RECONNECT_DELAY = 5000; // 5초
   const [highlightSegments, setHighlightSegments] = useState([]);
 
+  // 하이라이트 정보 업데이트 함수
+  const updateHighlightSegments = async () => {
+    try {
+      const response = await getNewsDetail(params.id);
+      setHighlightSegments(response.data.highlightSegments || []);
+    } catch (error) {
+      console.error('하이라이트 정보 업데이트 실패:', error);
+    }
+  };
+
   // 인용구 클릭 시 해당 문단으로 스크롤 이동하는 함수
   const handleQuoteScroll = (paragraphIndex) => {
     const newsContent = document.getElementById('news-content');
@@ -89,6 +99,8 @@ const NewsDetailPage = () => {
       };
       
       setNews(newsData);
+      console.log('Category from API:', data.category);
+      console.log('Category ID after conversion:', getCategoryId(data.category));
       setSelectedCategory(getCategoryId(data.category));
       setHighlightSegments(data.highlightSegments || []);
     } catch (error) {
@@ -119,7 +131,7 @@ const NewsDetailPage = () => {
 
   const subscribeToChat = (client) => {
     return new Promise((resolve) => {
-      client.subscribe(`/topic/chat.${params.id}.count`, ({ body }) => {
+      client.subscribe(`/topic/chat.${selectedCategory}:${params.id}.count`, ({ body }) => {
         const { count } = JSON.parse(body);
         setUserCount(count);
       });
@@ -128,8 +140,10 @@ const NewsDetailPage = () => {
   };
 
   const initializeChatCount = (client) => {
+    const destination = `/app/chat.initCount.${selectedCategory}:${params.id}`;
+    console.log('Chat init destination:', destination);
     client.send(
-      `/app/chat.initCount.${params.id}`,
+      destination,
       {},
       ""
     );
@@ -171,7 +185,7 @@ const NewsDetailPage = () => {
   };
 
   useEffect(() => {
-    if (!params.id) return;
+    if (!params.id || !selectedCategory) return;
     if (socketRef.current) return;
 
     const initializeWebSocket = async () => {
@@ -194,7 +208,7 @@ const NewsDetailPage = () => {
         socketRef.current = null;
       }
     };
-  }, [params.id]);
+  }, [params.id, selectedCategory]);
 
   // 채팅 에러 핸들러 추가
   const handleChatError = (error) => {
@@ -458,6 +472,7 @@ const NewsDetailPage = () => {
                       <div className="flex-1 overflow-y-auto">
                         <ChatRoom 
                           articleId={params.id} 
+                          category={selectedCategory}
                           onError={handleChatError} 
                           isPcVersion={true}
                           isChatOpen={isChatOpen}
@@ -467,6 +482,7 @@ const NewsDetailPage = () => {
                           onQuoteClick={handleQuoteScroll}
                           isChatLoading={isChatLoading}
                           setIsChatLoading={setIsChatLoading}
+                          onQuoteScrap={updateHighlightSegments}
                         />
                       </div>
                     </div>
@@ -630,7 +646,8 @@ const NewsDetailPage = () => {
                   >
                     <div className="h-full pb-safe">
                       <ChatRoom 
-                        articleId={params.id} 
+                        articleId={params.id}
+                        category={selectedCategory} 
                         onError={handleChatError} 
                         isPcVersion={false}
                         isChatOpen={isChatOpen}
@@ -640,6 +657,7 @@ const NewsDetailPage = () => {
                         onQuoteClick={handleQuoteScroll}
                         isChatLoading={isChatLoading}
                         setIsChatLoading={setIsChatLoading}
+                        onQuoteScrap={updateHighlightSegments}
                       />
                     </div>
                   </div>
