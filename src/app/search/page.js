@@ -104,13 +104,15 @@ const SearchContent = () => {
                         className="block p-4 border border-gray-200 rounded-lg hover:border-[#0E74F9] transition-all duration-200"
                       >
                         <div className="flex flex-col md:flex-row gap-4">
-                          <div className="w-full md:w-[200px] md:flex-shrink-0">
-                            <img 
-                              src={result.imageUrl} 
-                              alt={result.title}
-                              className="w-full h-[150px] object-cover rounded-lg"
-                            />
-                          </div>
+                          {result.imageUrl && (
+                            <div className="w-full md:w-[200px] md:flex-shrink-0">
+                              <img 
+                                src={result.imageUrl} 
+                                alt={result.title}
+                                className="w-full h-[150px] object-cover rounded-lg"
+                              />
+                            </div>
+                          )}
                           <div className="flex-grow"> 
                             <h2 className="text-xl font-semibold mb-2 hover:text-[#0E74F9] transition-colors">{parse(result.title)}</h2>
                             <p className="text-gray-600 mb-3">{truncateText(JSON.parse(result.content).join(''), 150)}</p>
