@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { truncateText } from '@/lib/utils';
 
+// 이미지 URL에서 사이즈 정보 제거하는 함수
+const removeImageSize = (url) => {
+  if (!url) return url;
+  // /i/숫자/숫자/숫자 패턴을 찾아서 제거
+  return url.replace(/\/i\/\d+\/\d+\/\d+/, '');
+};
+
 export default function NewsCarousel({ carouselGroups = [], loading = false }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -74,9 +81,9 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
                 {group.mainNews.imageUrl ? (
                   <>
                     <img
-                      src={group.mainNews.imageUrl}
+                      src={removeImageSize(group.mainNews.imageUrl)}
                       alt={group.mainNews.title}
-                      className="w-full h-full object-cover"
+                      className="w-auto h-auto object-cover"
                     />
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4 text-white">
                       <h2 className="text-2xl font-bold mb-2">{group.mainNews.title}</h2>
@@ -104,9 +111,9 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
                       {news.imageUrl && (
                         <div className="relative w-1/3">
                           <img
-                            src={news.imageUrl}
+                            src={removeImageSize(news.imageUrl)}
                             alt={news.title}
-                            className="w-full h-full object-cover absolute inset-0"
+                            className="w-auto h-auto object-cover absolute inset-0"
                           />
                         </div>
                       )}
