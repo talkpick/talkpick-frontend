@@ -5,10 +5,11 @@ export default function SelectableText({ text, children, onSend, paragraphIndex 
   const [selInfo, setSelInfo] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
 
+  // 모바일 환경 체크
   useEffect(() => {
-    // 모바일 환경 체크
     const checkMobile = () => {
-      setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+      const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(mobile);
     };
     
     checkMobile();
@@ -16,26 +17,16 @@ export default function SelectableText({ text, children, onSend, paragraphIndex 
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (selInfo && containerRef.current && !containerRef.current.contains(e.target)) {
-        setSelInfo(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, [selInfo]);
+  // PC 환경에서의 텍스트 선택 처리
+  const handleMouseUp = () => {
+    if (isMobile) return;
 
-  function handleMouseUp() {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed) {
       setSelInfo(null);
       return;
     }
+
     if (!containerRef.current.contains(sel.anchorNode) ||
         !containerRef.current.contains(sel.focusNode)) {
       setSelInfo(null);
@@ -47,7 +38,6 @@ export default function SelectableText({ text, children, onSend, paragraphIndex 
     const containerRect = containerRef.current.getBoundingClientRect();
     const snippet = sel.toString();
 
-    // 오프셋 계산 (단일 text 노드 가정)
     const start = text.indexOf(snippet);
     if (start < 0) {
       setSelInfo(null);
@@ -55,7 +45,6 @@ export default function SelectableText({ text, children, onSend, paragraphIndex 
     }
     const end = start + snippet.length;
 
-    // 선택 영역의 상대 위치 계산 (컨테이너 기준)
     const relativeX = (rect.left - containerRect.left + rect.width) / containerRect.width * 100;
     const relativeY = (rect.top - containerRect.top) / containerRect.height * 100;
 
@@ -67,10 +56,12 @@ export default function SelectableText({ text, children, onSend, paragraphIndex 
       end,
       paragraphIndex
     });
-  }
+  };
 
+  // 모바일 환경에서의 텍스트 선택 처리
   const handleTouchEnd = (e) => {
-    // 기본 선택 동작 방지
+    if (!isMobile) return;
+
     e.preventDefault();
     
     const sel = window.getSelection();
@@ -110,10 +101,11 @@ export default function SelectableText({ text, children, onSend, paragraphIndex 
     });
   };
 
-  const handleSendButtonTouch = (e) => {
+  // PC 환경에서의 버튼 클릭 처리
+  const handleButtonClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     onSend({
       snippetText: selInfo.snippet,
       startOffset: selInfo.start,
@@ -123,6 +115,38 @@ export default function SelectableText({ text, children, onSend, paragraphIndex 
     setSelInfo(null);
     window.getSelection().removeAllRanges();
   };
+
+  // 모바일 환경에서의 버튼 터치 처리
+  const handleButtonTouch = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    onSend({
+      snippetText: selInfo.snippet,
+      startOffset: selInfo.start,
+      endOffset: selInfo.end,
+      paragraphIndex: selInfo.paragraphIndex
+    });
+    setSelInfo(null);
+    window.getSelection().removeAllRanges();
+  };
+
+  // 외부 클릭/터치 처리
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (selInfo && containerRef.current && !containerRef.current.contains(e.target)) {
+        setSelInfo(null);
+      }
+    }
+
+    if (isMobile) {
+      document.addEventListener('touchstart', handleClickOutside);
+      return () => document.removeEventListener('touchstart', handleClickOutside);
+    } else {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [selInfo, isMobile]);
 
   return (
     <div
@@ -138,17 +162,64 @@ export default function SelectableText({ text, children, onSend, paragraphIndex 
       }}
     >
       {children}
-      {selInfo && (
+      {selInfo && !isMobile && (
         <button
-          onTouchEnd={handleSendButtonTouch}
-          onClick={handleSendButtonTouch}
+          onClick={handleButtonClick}
+          onMouseDown={(e) => e.preventDefault()}
           style={{
             position: 'absolute',
             top: `${selInfo.y}%`,
             right: `${100 - selInfo.x}%`,
             transform: 'translate(0, -100%)',
-            padding: isMobile ? '12px 24px' : '6px 12px',
-            fontSize: isMobile ? '16px' : '13px',
+            padding: '6px 12px',
+            fontSize: '13px',
+            fontWeight: '500',
+            background: '#007aff',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '20px',
+            cursor: 'pointer',
+            zIndex: 10,
+            whiteSpace: 'nowrap',
+            boxShadow: '0 2px 8px rgba(0, 122, 255, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            backgroundColor: 'rgba(0, 122, 255, 0.9)',
+            pointerEvents: 'auto'
+          }}
+        >
+          <svg 
+            width="16" 
+            height="16" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ marginRight: '2px' }}
+          >
+            <path 
+              d="M12 4V20M4 12H20" 
+              stroke="currentColor" 
+              strokeWidth="2.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            />
+          </svg>
+          채팅방 보내기
+        </button>
+      )}
+      {selInfo && isMobile && (
+        <button
+          onTouchEnd={handleButtonTouch}
+          style={{
+            position: 'absolute',
+            top: `${selInfo.y}%`,
+            right: `${100 - selInfo.x}%`,
+            transform: 'translate(0, -100%)',
+            padding: '12px 24px',
+            fontSize: '16px',
             fontWeight: '500',
             background: '#007aff',
             color: '#fff',
@@ -166,17 +237,17 @@ export default function SelectableText({ text, children, onSend, paragraphIndex 
             backgroundColor: 'rgba(0, 122, 255, 0.9)',
             touchAction: 'manipulation',
             WebkitTapHighlightColor: 'transparent',
-            minWidth: isMobile ? '140px' : 'auto',
-            minHeight: isMobile ? '48px' : 'auto'
+            minWidth: '140px',
+            minHeight: '48px'
           }}
         >
           <svg 
-            width={isMobile ? "20" : "16"} 
-            height={isMobile ? "20" : "16"} 
+            width="20" 
+            height="20" 
             viewBox="0 0 24 24" 
             fill="none" 
             xmlns="http://www.w3.org/2000/svg"
-            style={{ marginRight: isMobile ? '8px' : '2px' }}
+            style={{ marginRight: '8px' }}
           >
             <path 
               d="M12 4V20M4 12H20" 
