@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/utils';
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { scrapQuote } from '@/app/api/chat/quote';
-import { fetchChatMessages } from '@/app/api/chat/chatLoadingApi';
+import { fetchChatMessages, fetchOlderChatMessages } from '@/app/api/chat/chatLoadingApi';
 import { refreshAccessToken } from '@/lib/axios';
 
 /**
@@ -20,6 +20,10 @@ function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIs
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isScrapLoading, setIsScrapLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [oldestMessageTime, setOldestMessageTime] = useState(null);
+  const [hasNext, setHasNext] = useState(true);
+  const [isNearBottom, setIsNearBottom] = useState(true);
   const messagesEndRef = useRef(null);
   const { nickname } = useContext(AuthContext);
   const clientRef = useRef(null);
@@ -191,6 +195,63 @@ function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIs
     });
   };
 
+  // 스크롤 위치 감지
+  const handleScroll = async () => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+
+    // 스크롤이 하단에 가까운지 확인
+    const scrollThreshold = 100; // 100px 이내로 스크롤이 내려오면 하단으로 간주
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= scrollThreshold;
+    setIsNearBottom(isNearBottom);
+
+    // 과거 메시지 로딩 로직
+    if (!isLoadingMore && hasNext && container.scrollTop <= 50) {
+      const scrollHeight = container.scrollHeight;
+      const scrollTop = container.scrollTop;
+      
+      setIsLoadingMore(true);
+      try {
+        const response = await fetchOlderChatMessages(articleId, oldestMessageTime);
+        if (response.data.items.length > 0) {
+          const newMessages = response.data.items.map(message => {
+            if (message.content.startsWith('{')) {
+              try {
+                const parsedContent = JSON.parse(message.content);
+                return {
+                  ...message,
+                  content: parsedContent
+                };
+              } catch (error) {
+                console.error('Content 파싱 중 오류:', error);
+                return message;
+              }
+            }
+            return message;
+          });
+
+          setMessages(prev => [...newMessages, ...prev]);
+          setOldestMessageTime(newMessages[0].timestamp);
+          setHasNext(response.data.hasNext);
+
+          // 스크롤 위치 복원
+          requestAnimationFrame(() => {
+            const newScrollHeight = container.scrollHeight;
+            const heightDifference = newScrollHeight - scrollHeight;
+            container.scrollTop = scrollTop + heightDifference;
+          });
+        } else {
+          setHasNext(false);
+        }
+      } catch (error) {
+        console.error("이전 메시지 로딩 실패:", error);
+        onError(error);
+      } finally {
+        setIsLoadingMore(false);
+      }
+    }
+  };
+
   // 과거 메시지 처리
   const processChatHistory = async (stompClient) => {
     try {
@@ -212,6 +273,15 @@ function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIs
           return message;
         });
         setMessages(processedMessages);
+        
+        // 가장 오래된 메시지의 시간 저장
+        const oldestTime = processedMessages[0].timestamp;
+        setOldestMessageTime(oldestTime);
+        
+        // hasNext 상태 설정
+        setHasNext(chatHistory.data.hasNext);
+      } else {
+        setHasNext(false);
       }
       return stompClient;
     } catch (error) {
@@ -304,8 +374,30 @@ function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIs
 
   // 새 메시지 자동 스크롤
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (isNearBottom) {
+      scrollToBottom();
+    }
+  }, [messages, isNearBottom]);
+
+  // 스크롤 이벤트 리스너 등록 (디바운스 적용)
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+
+    let timeoutId;
+    const debouncedHandleScroll = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        handleScroll();
+      }, 100);
+    };
+
+    container.addEventListener('scroll', debouncedHandleScroll);
+    return () => {
+      container.removeEventListener('scroll', debouncedHandleScroll);
+      clearTimeout(timeoutId);
+    };
+  }, [oldestMessageTime, isLoadingMore, hasNext]);
 
   return (
     <div className="h-full flex flex-col">
@@ -339,8 +431,22 @@ function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIs
           >
             채팅방 나가기
           </button>
-          <div className="flex-1 min-h-0 overflow-y-auto bg-gray-50 rounded-lg" ref={chatContainerRef}>
-            <div className="p-4 space-y-2">
+          <div 
+            className="flex-1 min-h-0 overflow-y-auto bg-gray-50 rounded-lg overscroll-contain relative" 
+            ref={chatContainerRef}
+          >
+            {isLoadingMore && (
+              <div className="p-4 text-center sticky top-0 bg-gray-50 z-10">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent mx-auto"></div>
+                <p className="text-sm text-gray-500 mt-2">이전 메시지를 불러오는 중...</p>
+              </div>
+            )}
+            {!hasNext && messages.length > 0 && (
+              <div className="p-4 text-center sticky top-0 bg-gray-50 z-10">
+                <p className="text-sm text-gray-500">더 이상 불러올 메시지가 없습니다.</p>
+              </div>
+            )}
+            <div className="p-4 space-y-2 pb-16">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -397,6 +503,19 @@ function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIs
               ))}
               <div ref={messagesEndRef} />
             </div>
+            {!isNearBottom && (
+              <div className="sticky bottom-4 right-4 flex justify-end z-20">
+                <button
+                  onClick={scrollToBottom}
+                  className="bg-white text-gray-600 p-2 rounded-full shadow-lg hover:bg-gray-50 transition-colors border border-gray-200"
+                  aria-label="새 메시지로 이동"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-2 p-2 bg-white">
             {selectedQuote && (
