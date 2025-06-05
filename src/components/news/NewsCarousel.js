@@ -77,8 +77,19 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
               <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
                 <span className="text-blue-500 text-3xl"># </span>
                 {carouselGroups.length === 2 ? (
-                  index === 0 ? 'Hot 뉴스' : 'TalkPeak 뉴스'
-                ) : '인기뉴스'}
+                  index === 0 ? <div className="flex items-center gap-2">
+                  <span>TalkPick 뉴스</span>
+                  <span className="text-sm text-gray-500">조회수 TOP 1</span>
+                </div> : <div className="flex items-center gap-2">
+                  <span>TalkPeak 뉴스</span>
+                  <span className="text-sm text-gray-500">채팅방 인원수 TOP 1</span>
+                </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                  <span>TalkPick 뉴스</span>
+                  <span className="text-sm text-gray-500">조회수 TOP 1</span>
+                </div>
+                )}
               </h2>
               <Link href={`/news/detail/${group.mainNews.guid}`} className="block relative h-[250px] md:h-[calc(100%-3rem)] rounded-lg overflow-hidden hover:ring-2 hover:ring-[#0E74F9] transition-all">
                 {group.mainNews.imageUrl ? (
