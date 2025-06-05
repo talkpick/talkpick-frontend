@@ -206,48 +206,54 @@ function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIs
     setIsNearBottom(isNearBottom);
 
     // 과거 메시지 로딩 로직
-    if (!isLoadingMore && hasNext && container.scrollTop <= 50) {
-      const scrollHeight = container.scrollHeight;
-      const scrollTop = container.scrollTop;
-      
-      setIsLoadingMore(true);
-      try {
-        const response = await fetchOlderChatMessages(articleId, oldestMessageTime);
-        if (response.data.items.length > 0) {
-          const newMessages = response.data.items.map(message => {
-            if (message.content.startsWith('{')) {
-              try {
-                const parsedContent = JSON.parse(message.content);
-                return {
-                  ...message,
-                  content: parsedContent
-                };
-              } catch (error) {
-                console.error('Content 파싱 중 오류:', error);
-                return message;
+    if (!isLoadingMore && hasNext) {
+      // 모바일 환경을 고려한 스크롤 위치 감지
+      const scrollPosition = container.scrollTop;
+      const scrollThreshold = 50; // 스크롤이 상단에서 50px 이내일 때 로드
+
+      if (scrollPosition <= scrollThreshold) {
+        const scrollHeight = container.scrollHeight;
+        const scrollTop = container.scrollTop;
+        
+        setIsLoadingMore(true);
+        try {
+          const response = await fetchOlderChatMessages(articleId, oldestMessageTime);
+          if (response.data.items.length > 0) {
+            const newMessages = response.data.items.map(message => {
+              if (message.content.startsWith('{')) {
+                try {
+                  const parsedContent = JSON.parse(message.content);
+                  return {
+                    ...message,
+                    content: parsedContent
+                  };
+                } catch (error) {
+                  console.error('Content 파싱 중 오류:', error);
+                  return message;
+                }
               }
-            }
-            return message;
-          });
+              return message;
+            });
 
-          setMessages(prev => [...newMessages, ...prev]);
-          setOldestMessageTime(newMessages[0].timestamp);
-          setHasNext(response.data.hasNext);
+            setMessages(prev => [...newMessages, ...prev]);
+            setOldestMessageTime(newMessages[0].timestamp);
+            setHasNext(response.data.hasNext);
 
-          // 스크롤 위치 복원
-          requestAnimationFrame(() => {
-            const newScrollHeight = container.scrollHeight;
-            const heightDifference = newScrollHeight - scrollHeight;
-            container.scrollTop = scrollTop + heightDifference;
-          });
-        } else {
-          setHasNext(false);
+            // 스크롤 위치 복원
+            requestAnimationFrame(() => {
+              const newScrollHeight = container.scrollHeight;
+              const heightDifference = newScrollHeight - scrollHeight;
+              container.scrollTop = scrollTop + heightDifference;
+            });
+          } else {
+            setHasNext(false);
+          }
+        } catch (error) {
+          console.error("이전 메시지 로딩 실패:", error);
+          onError(error);
+        } finally {
+          setIsLoadingMore(false);
         }
-      } catch (error) {
-        console.error("이전 메시지 로딩 실패:", error);
-        onError(error);
-      } finally {
-        setIsLoadingMore(false);
       }
     }
   };
@@ -439,11 +445,6 @@ function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIs
               <div className="p-4 text-center sticky top-0 bg-gray-50 z-10">
                 <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent mx-auto"></div>
                 <p className="text-sm text-gray-500 mt-2">이전 메시지를 불러오는 중...</p>
-              </div>
-            )}
-            {!hasNext && messages.length > 0 && (
-              <div className="p-4 text-center sticky top-0 bg-gray-50 z-10">
-                <p className="text-sm text-gray-500">더 이상 불러올 메시지가 없습니다.</p>
               </div>
             )}
             <div className="p-4 space-y-2 pb-16">
