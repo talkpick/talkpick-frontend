@@ -130,23 +130,36 @@ const NewsDetailPage = () => {
   };
 
   const subscribeToChat = (client) => {
-    return new Promise((resolve) => {
-      client.subscribe(`/topic/chat.${selectedCategory}:${params.id}.count`, ({ body }) => {
-        const { count } = JSON.parse(body);
-        setUserCount(count);
-      });
-      resolve(client);
+    return new Promise((resolve, reject) => {
+      try {
+        client.subscribe(`/topic/chat.${selectedCategory}:${params.id}.count`, ({ body }) => {
+          const { count } = JSON.parse(body);
+          setUserCount(count);
+        });
+        resolve(client);
+      } catch (error) {
+        reject(error);
+      }
     });
   };
 
   const initializeChatCount = (client) => {
-    const destination = `/app/chat.initCount.${selectedCategory}:${params.id}`;
-    console.log('Chat init destination:', destination);
-    client.send(
-      destination,
-      {},
-      ""
-    );
+    return new Promise((resolve, reject) => {
+      const destination = `/app/chat.initCount.${selectedCategory}:${params.id}`;
+      console.log('Chat init destination:', destination);
+      client.send(
+        destination,
+        {},
+        "",
+        (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        }
+      );
+    });
   };
 
   const setupConnectionCloseHandler = (client) => {
@@ -164,7 +177,7 @@ const NewsDetailPage = () => {
             try {
               const newClient = await connectWebSocket();
               await subscribeToChat(newClient);
-              initializeChatCount(newClient);
+              await initializeChatCount(newClient);
               setupConnectionCloseHandler(newClient);
               socketRef.current = newClient;
               reconnectAttemptsRef.current = 0; // 재연결 성공 시 카운트 초기화
@@ -192,7 +205,7 @@ const NewsDetailPage = () => {
       try {
         const client = await connectWebSocket();
         await subscribeToChat(client);
-        initializeChatCount(client);
+        await initializeChatCount(client);
         setupConnectionCloseHandler(client);
         socketRef.current = client;
       } catch (error) {
@@ -212,8 +225,12 @@ const NewsDetailPage = () => {
 
   // 채팅 에러 핸들러 추가
   const handleChatError = (error) => {
-    console.log(error);
-    setErrorMessage('채팅 서비스 연결에 실패했습니다. 페이지 새로고침 후에 다시 시도해주세요.');
+    console.log(error.message);
+    if(error.message === "NO_REFRESH_TOKEN") {
+      setErrorMessage('채팅 서비스 연결에 실패했습니다. 로그인 후 이용해주세요.');
+    } else{
+      setErrorMessage('채팅 서비스 연결에 실패했습니다. 페이지 새로고침 후에 다시 시도해주세요.');
+    }
     setShowErrorToast(true);
     setIsChatOpen(false);
     setIsChatLoading(false);
