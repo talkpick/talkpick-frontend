@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import parse from 'html-react-parser';
 import { getCategoryId } from '@/constants/categories';
-import { getNewsDetail } from '@/app/api/news/detail/[id]/newsDetailApi';
+import { getNewsDetail, getNewsViewCount } from '@/app/api/news/detail/[id]/newsDetailApi';
 import ChatRoom from '@/components/ChatRoom';
 import ViewCountIcon from '@/components/icons/ViewCountIcon';
 import SummaryIcon from '@/components/icons/SummaryIcon';
@@ -49,6 +49,13 @@ const NewsDetailPage = () => {
     try {
       const response = await getNewsDetail(params.id);
       setHighlightSegments(response.data.highlightSegments || []);
+      
+      // 조회수도 함께 업데이트
+      const viewCountResponse = await getNewsViewCount(params.id);
+      setNews(prev => ({
+        ...prev,
+        viewCount: viewCountResponse.data.viewCount || 0
+      }));
     } catch (error) {
       console.error('하이라이트 정보 업데이트 실패:', error);
     }
@@ -75,34 +82,42 @@ const NewsDetailPage = () => {
   const fetchNewsDetail = async () => {
     setIsLoading(true);
     try {
-      const response = await getNewsDetail(params.id);
+      // 뉴스 상세 정보와 조회수를 병렬로 가져오기
+      const [newsResponse, viewCountResponse] = await Promise.all([
+        getNewsDetail(params.id),
+        getNewsViewCount(params.id)
+      ]);
 
-      console.log(response);
-      const data = response.data;
+      console.log('News response:', newsResponse);
+      console.log('View count response:', viewCountResponse);
+      
+      const newsData = newsResponse.data;
+      const viewCountData = viewCountResponse.data;
+      
       // API 응답 데이터를 프론트엔드 형식에 맞게 변환
-      const newsData = {
-        id: data.newsId,
-        title: data.title,
-        category: data.category,
-        summary: data.summary,
-        content: data.content,
-        imageUrl: removeImageSize(data.imageUrl),
-        date: new Date(data.publishDate).toLocaleString('ko-KR', {
+      const newsDataFormatted = {
+        id: newsData.newsId,
+        title: newsData.title,
+        category: newsData.category,
+        summary: newsData.summary,
+        content: newsData.content,
+        imageUrl: removeImageSize(newsData.imageUrl),
+        date: new Date(newsData.publishDate).toLocaleString('ko-KR', {
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
           hour: '2-digit',
           minute: '2-digit'
         }),
-        originLink: data.originLink,
-        viewCount: data.viewCount
+        originLink: newsData.originLink,
+        viewCount: viewCountData.viewCount || 0
       };
       
-      setNews(newsData);
-      console.log('Category from API:', data.category);
-      console.log('Category ID after conversion:', getCategoryId(data.category));
-      setSelectedCategory(getCategoryId(data.category));
-      setHighlightSegments(data.highlightSegments || []);
+      setNews(newsDataFormatted);
+      console.log('Category from API:', newsData.category);
+      console.log('Category ID after conversion:', getCategoryId(newsData.category));
+      setSelectedCategory(getCategoryId(newsData.category));
+      setHighlightSegments(newsData.highlightSegments || []);
     } catch (error) {
       console.error('뉴스를 가져오는데 실패했습니다:', error);
       setError(error.message);

@@ -5,3 +5,8 @@ export const getNewsDetail = async (id) => {
   return response.data;
 };
 
+export const getNewsViewCount = async (id) => {
+  const response = await instance.get(`/api/public/news/viewcount/${id}`);  
+  return response.data;
+};
+
