@@ -380,7 +380,7 @@ const NewsDetailPage = () => {
                       <p>{news.date}</p>
                       <div className="flex items-center gap-1">
                         <ViewCountIcon />
-                        <span>{news.viewCount.toLocaleString()}회</span>
+                        <span>{(news.viewCount ?? 0).toLocaleString()}회</span>
                       </div>
                     </div>
                     <button
@@ -549,7 +549,7 @@ const NewsDetailPage = () => {
                       <p>{news.date}</p>
                       <div className="flex items-center gap-1">
                         <ViewCountIcon />
-                        <span>{news.viewCount.toLocaleString()}회</span>
+                        <span>{(news.viewCount ?? 0).toLocaleString()}회</span>
                       </div>
                     </div>
                     <button
