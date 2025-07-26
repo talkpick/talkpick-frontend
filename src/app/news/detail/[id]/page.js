@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import parse from 'html-react-parser';
 import { getCategoryId } from '@/constants/categories';
-import { getNewsDetail } from '@/app/api/news/detail/[id]/newsDetailApi';
+import { getNewsDetail, getNewsViewCount } from '@/app/api/news/detail/[id]/newsDetailApi';
 import ChatRoom from '@/components/ChatRoom';
 import ViewCountIcon from '@/components/icons/ViewCountIcon';
 import SummaryIcon from '@/components/icons/SummaryIcon';
@@ -49,6 +49,13 @@ const NewsDetailPage = () => {
     try {
       const response = await getNewsDetail(params.id);
       setHighlightSegments(response.data.highlightSegments || []);
+      
+      // 조회수도 함께 업데이트
+      const viewCountResponse = await getNewsViewCount(params.id);
+      setNews(prev => ({
+        ...prev,
+        viewCount: viewCountResponse.data.viewCount || 0
+      }));
     } catch (error) {
       console.error('하이라이트 정보 업데이트 실패:', error);
     }
@@ -75,34 +82,42 @@ const NewsDetailPage = () => {
   const fetchNewsDetail = async () => {
     setIsLoading(true);
     try {
-      const response = await getNewsDetail(params.id);
+      // 뉴스 상세 정보와 조회수를 병렬로 가져오기
+      const [newsResponse, viewCountResponse] = await Promise.all([
+        getNewsDetail(params.id),
+        getNewsViewCount(params.id)
+      ]);
 
-      console.log(response);
-      const data = response.data;
+      console.log('News response:', newsResponse);
+      console.log('View count response:', viewCountResponse);
+      
+      const newsData = newsResponse.data;
+      const viewCountData = viewCountResponse.data;
+      
       // API 응답 데이터를 프론트엔드 형식에 맞게 변환
-      const newsData = {
-        id: data.newsId,
-        title: data.title,
-        category: data.category,
-        summary: data.summary,
-        content: data.content,
-        imageUrl: removeImageSize(data.imageUrl),
-        date: new Date(data.publishDate).toLocaleString('ko-KR', {
+      const newsDataFormatted = {
+        id: newsData.newsId,
+        title: newsData.title,
+        category: newsData.category,
+        summary: newsData.summary,
+        content: newsData.content,
+        imageUrl: removeImageSize(newsData.imageUrl),
+        date: new Date(newsData.publishDate).toLocaleString('ko-KR', {
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
           hour: '2-digit',
           minute: '2-digit'
         }),
-        originLink: data.originLink,
-        viewCount: data.viewCount
+        originLink: newsData.originLink,
+        viewCount: viewCountData.viewCount || 0
       };
       
-      setNews(newsData);
-      console.log('Category from API:', data.category);
-      console.log('Category ID after conversion:', getCategoryId(data.category));
-      setSelectedCategory(getCategoryId(data.category));
-      setHighlightSegments(data.highlightSegments || []);
+      setNews(newsDataFormatted);
+      console.log('Category from API:', newsData.category);
+      console.log('Category ID after conversion:', getCategoryId(newsData.category));
+      setSelectedCategory(getCategoryId(newsData.category));
+      setHighlightSegments(newsData.highlightSegments || []);
     } catch (error) {
       console.error('뉴스를 가져오는데 실패했습니다:', error);
       setError(error.message);
@@ -130,23 +145,36 @@ const NewsDetailPage = () => {
   };
 
   const subscribeToChat = (client) => {
-    return new Promise((resolve) => {
-      client.subscribe(`/topic/chat.${selectedCategory}:${params.id}.count`, ({ body }) => {
-        const { count } = JSON.parse(body);
-        setUserCount(count);
-      });
-      resolve(client);
+    return new Promise((resolve, reject) => {
+      try {
+        client.subscribe(`/topic/chat.${selectedCategory}:${params.id}.count`, ({ body }) => {
+          const { count } = JSON.parse(body);
+          setUserCount(count);
+        });
+        resolve(client);
+      } catch (error) {
+        reject(error);
+      }
     });
   };
 
   const initializeChatCount = (client) => {
-    const destination = `/app/chat.initCount.${selectedCategory}:${params.id}`;
-    console.log('Chat init destination:', destination);
-    client.send(
-      destination,
-      {},
-      ""
-    );
+    return new Promise((resolve, reject) => {
+      const destination = `/app/chat.initCount.${selectedCategory}:${params.id}`;
+      console.log('Chat init destination:', destination);
+      client.send(
+        destination,
+        {},
+        "",
+        (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        }
+      );
+    });
   };
 
   const setupConnectionCloseHandler = (client) => {
@@ -164,7 +192,7 @@ const NewsDetailPage = () => {
             try {
               const newClient = await connectWebSocket();
               await subscribeToChat(newClient);
-              initializeChatCount(newClient);
+              await initializeChatCount(newClient);
               setupConnectionCloseHandler(newClient);
               socketRef.current = newClient;
               reconnectAttemptsRef.current = 0; // 재연결 성공 시 카운트 초기화
@@ -192,7 +220,7 @@ const NewsDetailPage = () => {
       try {
         const client = await connectWebSocket();
         await subscribeToChat(client);
-        initializeChatCount(client);
+        await initializeChatCount(client);
         setupConnectionCloseHandler(client);
         socketRef.current = client;
       } catch (error) {
@@ -212,8 +240,12 @@ const NewsDetailPage = () => {
 
   // 채팅 에러 핸들러 추가
   const handleChatError = (error) => {
-    console.log(error);
-    setErrorMessage('채팅 서비스 연결에 실패했습니다. 페이지 새로고침 후에 다시 시도해주세요.');
+    console.log(error.message);
+    if(error.message === "NO_REFRESH_TOKEN") {
+      setErrorMessage('채팅 서비스 연결에 실패했습니다. 로그인 후 이용해주세요.');
+    } else{
+      setErrorMessage('채팅 서비스 연결에 실패했습니다. 페이지 새로고침 후에 다시 시도해주세요.');
+    }
     setShowErrorToast(true);
     setIsChatOpen(false);
     setIsChatLoading(false);

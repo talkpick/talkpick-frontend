@@ -368,6 +368,17 @@ function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIs
     }
   };
 
+  // 키보드 이벤트 핸들러
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.nativeEvent.isComposing) {
+        return;
+      }
+      e.preventDefault();
+      send();
+    }
+  };
+
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
     return () => {
@@ -548,7 +559,7 @@ function ChatRoom({ articleId, category, onError, isPcVersion, isChatOpen, setIs
                 type="text"
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+                onKeyDown={handleKeyDown}
                 className={`flex-1 min-w-0 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base ${
                   isScrapLoading ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
