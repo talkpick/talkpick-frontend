@@ -15,14 +15,7 @@ import SockJS from 'sockjs-client';
 import { SOCKET_CONFIG, SOCKET_CONNECTION_TYPE } from '@/constants/socketConstants';
 import SelectableText from '@/components/SelectableText';
 import HighlightedText from '@/components/HighlightedText';
-
-
-// 이미지 URL에서 사이즈 정보 제거하는 함수
-const removeImageSize = (url) => {
-  if (!url) return url;
-  // /i/숫자/숫자/숫자 패턴을 찾아서 제거
-  return url.replace(/\/i\/\d+\/\d+\/\d+/, '');
-};
+import { removeImageSize } from '@/lib/utils';
 
 const NewsDetailPage = () => {
   const params = useParams();

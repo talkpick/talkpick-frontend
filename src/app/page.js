@@ -70,7 +70,8 @@ export default function HomePage() {
       console.log(carouselGroups);
       setCarouselNews(carouselGroups);
     } catch (err) {
-      setError(err.message);
+      //setError(err.message);
+      console.error('Carousel news fetch error:', err);
     } finally {
       setCarouselLoading(false);
     }
@@ -136,7 +137,9 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <hr className="my-8 border-gray-500" />
+            {carouselNews && carouselNews.length > 0 && (
+              <hr className="my-8 border-gray-500" />
+            )}
             <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
               <span className="text-blue-500 text-3xl"># </span>최신뉴스
             </h2>
