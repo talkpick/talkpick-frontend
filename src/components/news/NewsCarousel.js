@@ -67,7 +67,7 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
         {carouselGroups.map((group, index) => (
           <div key={index} className="flex h-full min-w-full flex-col md:flex-row">
             {/* 메인 뉴스 */}
-            <div className={`w-full p-4 ${group.relatedNews && group.relatedNews.length > 0 ? 'md:w-1/2' : 'md:w-full'}`}>
+            <div className="w-full md:w-1/2 p-4">
               <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
                 <span className="text-blue-500 text-3xl"># </span>
                 {carouselGroups.length === 2 ? (
@@ -108,13 +108,13 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
             </div>
 
             {/* 관련 뉴스 */}
-            {group.relatedNews && group.relatedNews.length > 0 && (
-              <div className="w-full md:w-1/2 p-4">
-                <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
-                  <span className="text-blue-500 text-3xl"># </span>연관뉴스
-                </h2>
-                <div className="flex flex-col gap-3 h-auto md:h-[calc(100%-3rem)]">
-                  {group.relatedNews.map((news) => (
+            <div className="w-full md:w-1/2 p-4">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center gap-1">
+                <span className="text-blue-500 text-3xl"># </span>연관뉴스
+              </h2>
+              <div className="flex flex-col gap-3 h-auto md:h-[calc(100%-3rem)]">
+                {group.relatedNews && group.relatedNews.length > 0 ? (
+                  group.relatedNews.map((news) => (
                     <Link key={news.newsId} href={`/news/detail/${news.newsId}`} className="block h-[120px] md:flex-1">
                       <div className={`flex gap-4 bg-gray-50 rounded-lg overflow-hidden hover:ring-2 hover:ring-[#0E74F9] transition-all h-full ${!news.imageUrl ? 'p-4' : ''}`}>
                         {news.imageUrl && (
@@ -133,10 +133,14 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
                         </div>
                       </div>
                     </Link>
-                  ))}
-                </div>
+                  ))
+                ) : (
+                  <div className="h-full bg-gray-50 rounded-lg p-4 flex flex-col justify-center items-center">
+                    <p className="text-gray-500 text-center">표시할 연관뉴스가 없습니다</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         ))}
       </div>
