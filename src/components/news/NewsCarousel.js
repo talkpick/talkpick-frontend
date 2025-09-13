@@ -51,9 +51,6 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
 
   if (carouselGroups.length === 0) {
     return (
-      // <div className="relative w-full h-[500px] bg-white mb-8 flex items-center justify-center">
-      //   <p className="text-gray-600">표시할 뉴스가 없습니다.</p>
-      // </div>
       <></>
     );
   }
