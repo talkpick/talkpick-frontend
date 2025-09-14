@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { truncateText, removeImageSize } from '@/lib/utils';
+import { truncateText } from '@/lib/utils';
 import parse from 'html-react-parser';
 
 export default function NewsList({ news, hasNext, onLoadMore, isLoading }) {
@@ -17,7 +17,7 @@ export default function NewsList({ news, hasNext, onLoadMore, isLoading }) {
             {item.imageUrl && (
               <div className="w-full md:w-[200px] md:flex-shrink-0">
                 <img 
-                  src={removeImageSize(item.imageUrl)} 
+                  src={item.imageUrl} 
                   alt={item.title}
                   className="w-full h-[150px] object-cover rounded-lg"
                 />

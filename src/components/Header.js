@@ -114,7 +114,7 @@ const Header = () => {
 
           {/* 하위 카테고리 섹션 */}
           {showSubCategories && (
-            <div className="p-2 bg-gray-50">
+            <div className="py-2 bg-gray-50">
               <div className="flex gap-6 overflow-x-auto">
                 {CATEGORY_LIST.filter(category => category.id !== 'all').map(category => (
                   <button

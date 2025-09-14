@@ -5,9 +5,15 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { getScrapList } from '@/app/api/dashboard/scrapListApi';
 import HighlightedText from '@/components/HighlightedText';
-import { removeImageSize } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 6;
+
+// 이미지 URL에서 사이즈 정보 제거하는 함수
+const removeImageSize = (url) => {
+  if (!url) return url;
+  // /i/숫자/숫자/숫자 패턴을 찾아서 제거
+  return url.replace(/\/i\/\d+\/\d+\/\d+/, '');
+};
 
 export default function DashboardPage() {
   const [scraps, setScraps] = useState([]);

@@ -30,15 +30,4 @@ export const truncateText = (text, maxLength = 150) => {
   if (!text) return '';
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + '...';
-};
-
-/**
- * 이미지 URL에서 사이즈 정보를 제거합니다.
- * @param {string} url - 처리할 이미지 URL
- * @returns {string} 사이즈 정보가 제거된 URL
- */
-export const removeImageSize = (url) => {
-  if (!url) return url;
-  // /i/숫자/숫자/숫자 패턴을 찾아서 제거
-  return url.replace(/\/i\/\d+\/\d+\/\d+/, '');
 }; 
