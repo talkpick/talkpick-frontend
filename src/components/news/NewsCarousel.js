@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { truncateText } from '@/lib/utils';
-
-// 이미지 URL에서 사이즈 정보 제거하는 함수
-const removeImageSize = (url) => {
-  if (!url) return url;
-  // /i/숫자/숫자/숫자 패턴을 찾아서 제거
-  return url.replace(/\/i\/\d+\/\d+\/\d+/, '');
-};
+import { truncateText, removeImageSize } from '@/lib/utils';
 
 export default function NewsCarousel({ carouselGroups = [], loading = false }) {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -58,9 +51,7 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
 
   if (carouselGroups.length === 0) {
     return (
-      <div className="relative w-full h-[500px] bg-white mb-8 flex items-center justify-center">
-        <p className="text-gray-600">표시할 뉴스가 없습니다.</p>
-      </div>
+      <></>
     );
   }
 
@@ -119,26 +110,32 @@ export default function NewsCarousel({ carouselGroups = [], loading = false }) {
                 <span className="text-blue-500 text-3xl"># </span>연관뉴스
               </h2>
               <div className="flex flex-col gap-3 h-auto md:h-[calc(100%-3rem)]">
-                {group.relatedNews.map((news) => (
-                  <Link key={news.newsId} href={`/news/detail/${news.newsId}`} className="block h-[120px] md:flex-1">
-                    <div className={`flex gap-4 bg-gray-50 rounded-lg overflow-hidden hover:ring-2 hover:ring-[#0E74F9] transition-all h-full ${!news.imageUrl ? 'p-4' : ''}`}>
-                      {news.imageUrl && (
-                        <div className="relative w-1/3">
-                          <img
-                            src={removeImageSize(news.imageUrl)}
-                            alt={news.title}
-                            className="w-auto h-auto object-cover absolute inset-0"
-                          />
+                {group.relatedNews && group.relatedNews.length > 0 ? (
+                  group.relatedNews.map((news) => (
+                    <Link key={news.newsId} href={`/news/detail/${news.newsId}`} className="block h-[120px] md:flex-1">
+                      <div className={`flex gap-4 bg-gray-50 rounded-lg overflow-hidden hover:ring-2 hover:ring-[#0E74F9] transition-all h-full ${!news.imageUrl ? 'p-4' : ''}`}>
+                        {news.imageUrl && (
+                          <div className="relative w-1/3">
+                            <img
+                              src={removeImageSize(news.imageUrl)}
+                              alt={news.title}
+                              className="w-auto h-auto object-cover absolute inset-0"
+                            />
+                          </div>
+                        )}
+                        <div className={`${news.imageUrl ? 'w-2/3 p-2' : 'w-full'} flex flex-col justify-center`}>
+                          <h3 className="text-sm md:text-base font-bold mb-1 md:mb-2 text-gray-900 line-clamp-2 hover:text-blue-600 transition-colors">{news.title}</h3>
+                          <p className="text-xs text-gray-600 line-clamp-2">{truncateText(JSON.parse(news.content).join(''), 80)}</p>
+                          <p className="text-xs text-gray-500 mt-1">{news.date}</p>
                         </div>
-                      )}
-                      <div className={`${news.imageUrl ? 'w-2/3 p-2' : 'w-full'} flex flex-col justify-center`}>
-                        <h3 className="text-sm md:text-base font-bold mb-1 md:mb-2 text-gray-900 line-clamp-2 hover:text-blue-600 transition-colors">{news.title}</h3>
-                        <p className="text-xs text-gray-600 line-clamp-2">{truncateText(JSON.parse(news.content).join(''), 80)}</p>
-                        <p className="text-xs text-gray-500 mt-1">{news.date}</p>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  ))
+                ) : (
+                  <div className="h-full bg-gray-50 rounded-lg p-4 flex flex-col justify-center items-center">
+                    <p className="text-gray-500 text-center">표시할 연관뉴스가 없습니다</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
